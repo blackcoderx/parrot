@@ -259,7 +259,7 @@
   justify-content: space-between;
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
-  cursor: url("/closedhand.svg") 16 16, grab;
+  cursor: move;
   user-select: none;
   touch-action: none;
 }
@@ -299,13 +299,6 @@
   gap: 8px;
   padding: 12px;
   min-height: 60px;
-  /* Scrollable, but hide the scrollbar. */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* legacy Edge */
-}
-
-.askMessages::-webkit-scrollbar {
-  display: none; /* Chromium / Safari */
 }
 
 .askEmpty {
@@ -347,7 +340,7 @@
   display: flex;
   gap: 6px;
   padding: 10px 12px;
-  /*border-top: 1px solid var(--border);*/
+  border-top: 1px solid var(--border);
 }
 
 .askInput {
