@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import type { NormRect } from "./types";
+import Markdown from "./Markdown";
 import styles from "./Reader.module.css";
 
 /** What the thread anchors to when saved. */
@@ -244,11 +245,17 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
               : "Ask about the selected text."}
           </p>
         )}
-        {messages.map((m) => (
-          <div key={m.id} className={m.role === "user" ? styles.askUser : styles.askAssistant}>
-            {textOf(m)}
-          </div>
-        ))}
+        {messages.map((m) =>
+          m.role === "user" ? (
+            <div key={m.id} className={styles.askUser}>
+              {textOf(m)}
+            </div>
+          ) : (
+            <div key={m.id} className={styles.askAssistant}>
+              <Markdown>{textOf(m)}</Markdown>
+            </div>
+          ),
+        )}
         {error && <div className={styles.askError}>{error.message}</div>}
       </div>
 
