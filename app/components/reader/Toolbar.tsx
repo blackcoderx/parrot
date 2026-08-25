@@ -58,7 +58,7 @@ export function Toolbar({
       </Popover.Root>
 
       <button
-        className={styles.toolBtn}
+        className={`${styles.toolBtn} ${styles.penBtn}`}
         data-active={aiMode || undefined}
         onClick={onToggleAi}
         aria-label="AI pen"

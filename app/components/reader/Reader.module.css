@@ -198,6 +198,34 @@
   color: var(--porcelain);
 }
 
+/* AI pen — faint accent hover + a little life on the icon */
+.penBtn {
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.penBtn svg {
+  transition: transform 0.15s ease;
+}
+
+.penBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: color-mix(in srgb, var(--accent) 55%, var(--porcelain));
+}
+
+.penBtn:hover:not(:disabled) svg {
+  transform: rotate(-8deg) scale(1.06);
+}
+
+.penBtn:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+/* Keep the solid accent look while the pen mode is on, even on hover. */
+.penBtn[data-active]:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--porcelain);
+}
+
 /* Chat-anchored highlights (a saved Parrot thread) — always track the brand accent */
 .chatHighlight {
   position: absolute;
