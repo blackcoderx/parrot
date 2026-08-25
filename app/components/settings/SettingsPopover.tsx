@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Popover } from "@base-ui-components/react/popover";
+import { Select } from "@base-ui-components/react/select";
 import styles from "./SettingsPopover.module.css";
 
 interface ProviderMeta {
@@ -57,6 +58,12 @@ export function SettingsPopover() {
 
   const active = providers.find((p) => p.id === prefs?.activeProvider);
 
+  // Map id -> label so the Select trigger shows the provider name.
+  const providerItems = useMemo(
+    () => Object.fromEntries(providers.map((p) => [p.id, p.label] as const)),
+    [providers],
+  );
+
   function update(patch: Partial<Prefs>) {
     setPrefs((prev) => (prev ? { ...prev, ...patch } : prev));
     setSaved(false);
@@ -88,17 +95,35 @@ export function SettingsPopover() {
               <>
                 <label className={styles.field}>
                   <span className={styles.label}>Provider</span>
-                  <select
-                    className={styles.control}
+                  <Select.Root
+                    items={providerItems}
                     value={prefs.activeProvider}
-                    onChange={(e) => update({ activeProvider: e.target.value })}
+                    onValueChange={(v) => update({ activeProvider: v as string })}
                   >
-                    {providers.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.label}
-                      </option>
-                    ))}
-                  </select>
+                    <Select.Trigger className={styles.select}>
+                      <Select.Value />
+                      <Select.Icon className={styles.selectIcon}>
+                        <ChevronIcon />
+                      </Select.Icon>
+                    </Select.Trigger>
+                    <Select.Portal>
+                      <Select.Positioner
+                        className={styles.selectPositioner}
+                        side="bottom"
+                        align="start"
+                        sideOffset={6}
+                        alignItemWithTrigger={false}
+                      >
+                        <Select.Popup className={styles.selectPopup}>
+                          {providers.map((p) => (
+                            <Select.Item key={p.id} value={p.id} className={styles.selectItem}>
+                              <Select.ItemText>{p.label}</Select.ItemText>
+                            </Select.Item>
+                          ))}
+                        </Select.Popup>
+                      </Select.Positioner>
+                    </Select.Portal>
+                  </Select.Root>
                 </label>
 
                 {active && (
@@ -156,6 +181,20 @@ export function SettingsPopover() {
         </Popover.Positioner>
       </Popover.Portal>
     </Popover.Root>
+  );
+}
+
+function ChevronIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M6 9l6 6 6-6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

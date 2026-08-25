@@ -67,6 +67,84 @@
   opacity: 0.7;
 }
 
+/* Provider dropdown (Base UI Select) — trigger matches the other controls. */
+.select {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--foreground);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.12s ease;
+}
+
+.select:hover {
+  border-color: var(--accent);
+}
+
+.selectIcon {
+  display: flex;
+  color: var(--muted);
+}
+
+/* Minimal, rounded, borderless menu with a little gap between items. */
+.selectPositioner {
+  z-index: 60;
+}
+
+.selectPopup {
+  box-sizing: border-box;
+  min-width: var(--anchor-width);
+  max-height: var(--available-height);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 5px;
+  background: var(--background);
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 10px 32px rgba(2, 1, 0, 0.16);
+  outline: none;
+  transform-origin: var(--transform-origin);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+/* Enter/exit states — also let Base UI finish closing so the popup unmounts. */
+.selectPopup[data-starting-style],
+.selectPopup[data-ending-style] {
+  opacity: 0;
+  transform: scale(0.97);
+}
+
+.selectItem {
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--foreground);
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+  white-space: nowrap;
+}
+
+.selectItem[data-highlighted] {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.selectItem[data-selected] {
+  color: var(--accent);
+  font-weight: 550;
+}
+
 .keyStatus {
   font-size: 11px;
   margin-top: -4px;
