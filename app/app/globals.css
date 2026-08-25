@@ -1,0 +1,46 @@
+:root {
+  /* Brand palette */
+  --black: #020100;
+  --porcelain: #fdfffc;
+  --blue: #4c21e8;
+
+  /* Semantic tokens */
+  --background: var(--porcelain);
+  --foreground: var(--black);
+  --accent: var(--blue);
+  --muted: #6b6b6b;
+  --border: #e6e6e4;
+  --surface: #f4f4f2;
+
+  --radius: 8px;
+  --font-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}

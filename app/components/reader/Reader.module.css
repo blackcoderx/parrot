@@ -1,0 +1,374 @@
+.reader {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--surface);
+}
+
+/* Header */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  background: var(--background);
+  border-bottom: 1px solid var(--border);
+}
+
+.back {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.back:hover {
+  color: var(--accent);
+}
+
+.docTitle {
+  font-size: 14px;
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Viewer / pages */
+.viewer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 16px 96px;
+}
+
+.pageWrap {
+  position: relative;
+  line-height: 0;
+  box-shadow: 0 2px 12px rgba(2, 1, 0, 0.1);
+  background: var(--background);
+}
+
+.status {
+  padding: 64px 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* Highlights */
+.highlightLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.highlight {
+  position: absolute;
+  border-radius: 2px;
+  pointer-events: auto;
+  cursor: pointer;
+  mix-blend-mode: multiply;
+  transition: filter 0.1s ease;
+}
+
+.highlight:hover {
+  filter: brightness(0.92);
+}
+
+/* Selection menu */
+.selectionMenu {
+  display: flex;
+  padding: 4px;
+  background: var(--black);
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(2, 1, 0, 0.28);
+}
+
+.menuItem {
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: var(--porcelain);
+  font-size: 13px;
+  border-radius: 5px;
+  transition: background 0.12s ease;
+}
+
+.menuItem:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.menuItem:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Bottom toolbar (reference: figma dark pill) */
+.toolbar {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--black);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(2, 1, 0, 0.3);
+}
+
+.toolBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--porcelain);
+  font-size: 18px;
+  line-height: 1;
+  transition: background 0.12s ease;
+}
+
+.toolBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.toolBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.zoom {
+  min-width: 44px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--porcelain);
+  font-variant-numeric: tabular-nums;
+}
+
+.divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.penSwatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+}
+
+/* Color picker popup */
+.colorPopup {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background: var(--black);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(2, 1, 0, 0.28);
+}
+
+.colorDot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.colorDot[data-active] {
+  border-color: var(--porcelain);
+}
+
+.toolBtn[data-active] {
+  background: var(--accent);
+  color: var(--porcelain);
+}
+
+/* Chat-anchored highlights (a saved Parrot thread) — always track the brand accent */
+.chatHighlight {
+  position: absolute;
+  border-radius: 2px;
+  pointer-events: auto;
+  cursor: pointer;
+  mix-blend-mode: multiply;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  box-shadow: inset 0 -2px 0 var(--accent);
+  transition: filter 0.1s ease;
+}
+
+.chatHighlight:hover {
+  filter: brightness(0.94);
+}
+
+/* AI pen drag layer (per page) */
+.aiPenLayer {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+  z-index: 2;
+}
+
+.aiPenBox {
+  position: absolute;
+  border: 1.5px dashed var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  pointer-events: none;
+}
+
+/* Ask Parrot floating panel */
+.askPanel {
+  display: flex;
+  flex-direction: column;
+  width: 320px;
+  max-height: 420px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(2, 1, 0, 0.22);
+  overflow: hidden;
+}
+
+.askHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.askTitle {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.askClose {
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--muted);
+}
+
+.askClose:hover {
+  color: var(--foreground);
+}
+
+.askRegion {
+  max-width: 100%;
+  max-height: 120px;
+  object-fit: contain;
+  align-self: center;
+  margin: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.askMessages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  min-height: 60px;
+}
+
+.askEmpty {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.askUser,
+.askAssistant {
+  font-size: 13px;
+  line-height: 1.45;
+  padding: 8px 10px;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.askUser {
+  align-self: flex-end;
+  max-width: 85%;
+  background: var(--accent);
+  color: var(--porcelain);
+}
+
+.askAssistant {
+  align-self: flex-start;
+  max-width: 90%;
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+.askError {
+  font-size: 12px;
+  color: #b45309;
+  padding: 6px 10px;
+}
+
+.askInputRow {
+  display: flex;
+  gap: 6px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.askInput {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--foreground);
+  background: var(--background);
+}
+
+.askSend,
+.askSave {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.askSend {
+  background: var(--accent);
+  color: var(--porcelain);
+}
+
+.askSave {
+  background: var(--surface);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+}
+
+.askSend:disabled,
+.askSave:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.askPrivacy {
+  font-size: 10.5px;
+  color: var(--muted);
+  padding: 0 12px 10px;
+}
