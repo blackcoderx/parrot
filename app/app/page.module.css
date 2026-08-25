@@ -51,15 +51,6 @@
   cursor: default;
 }
 
-.kbd {
-  font-family: var(--font-sans);
-  font-size: 12px;
-  color: var(--muted);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: 2px 6px;
-}
-
 /* Recent files */
 .recent {
   border-top: 1px solid var(--border);

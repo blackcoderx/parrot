@@ -26,18 +26,6 @@ export default function Home() {
 
   const openPicker = useCallback(() => inputRef.current?.click(), []);
 
-  // Ctrl+N / Cmd+N opens the file picker.
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "n") {
-        e.preventDefault();
-        openPicker();
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [openPicker]);
-
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // allow re-selecting the same file later
@@ -65,7 +53,6 @@ export default function Home() {
 
         <button className={styles.newFile} onClick={openPicker} disabled={uploading}>
           <span>{uploading ? "Opening…" : "New file"}</span>
-          <kbd className={styles.kbd}>Ctrl N</kbd>
         </button>
 
         <input
