@@ -35,7 +35,7 @@ To reset Parrot, delete `~/.parrot`.
 
 ## Features
 
-- Home screen with a **New file** button (`Ctrl N`) and a **Recent files** list
+- Home screen with a **New file** button and a **Recent files** list
 - Continuous-scroll PDF reader with zoom
 - Text selection menu: **Copy**, **Highlight**, and **Ask Parrot**
 - Highlights persist and stay aligned at any zoom level
