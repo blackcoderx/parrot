@@ -47,6 +47,36 @@ function clampPos(left: number, top: number, w: number, h: number): Pos {
   };
 }
 
+// Claude-Code-style cycling words shown in the "thinking" pill.
+const THINKING_WORDS = [
+  "Reading",
+  "Parsing",
+  "Digesting",
+  "Pondering",
+  "Cross-referencing",
+  "Untangling jargon",
+  "Consulting the paper",
+  "Connecting ideas",
+  "Synthesizing",
+];
+const SEARCHING_WORDS = [
+  "Searching the web",
+  "Chasing citations",
+  "Scanning sources",
+  "Gathering results",
+];
+
+/** Cycle through `words` on an interval while `active`. */
+function useCyclingWord(active: boolean, words: string[]): string {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    const id = setInterval(() => setI((n) => n + 1), 1600);
+    return () => clearInterval(id);
+  }, [active, words]);
+  return words[i % words.length] ?? words[0];
+}
+
 export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSaved }: Props) {
   const [input, setInput] = useState("");
   const [saved, setSaved] = useState(false);
@@ -163,6 +193,28 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
 
   const busy = status === "submitted" || status === "streaming";
 
+  // Thinking/streaming state for the animated pill and caret.
+  const lastMsg = messages[messages.length - 1];
+  const lastText = lastMsg ? textOf(lastMsg) : "";
+  // A web_search tool call is mid-flight when the last message carries a tool
+  // part that hasn't produced output yet.
+  const searching =
+    !!lastMsg &&
+    lastMsg.parts.some((p) => {
+      const state = (p as { state?: string }).state;
+      return (
+        typeof p.type === "string" &&
+        p.type.startsWith("tool-") &&
+        state !== "output-available" &&
+        state !== "output-error"
+      );
+    });
+  // Show the pill while we wait for the assistant's first visible text.
+  const awaitingAssistant =
+    busy && (!lastMsg || lastMsg.role === "user" || lastText.trim() === "");
+  const streamingId = status === "streaming" ? lastMsg?.id : undefined;
+  const word = useCyclingWord(awaitingAssistant, searching ? SEARCHING_WORDS : THINKING_WORDS);
+
   function submit() {
     const text = input.trim();
     if (!text || busy) return;
@@ -245,16 +297,29 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
               : "Ask about the selected text."}
           </p>
         )}
-        {messages.map((m) =>
-          m.role === "user" ? (
-            <div key={m.id} className={styles.askUser}>
-              {textOf(m)}
-            </div>
-          ) : (
+        {messages.map((m) => {
+          if (m.role === "user") {
+            return (
+              <div key={m.id} className={styles.askUser}>
+                {textOf(m)}
+              </div>
+            );
+          }
+          const text = textOf(m);
+          // Empty assistant message (not started / tool call in flight) → the
+          // thinking pill stands in for it, so skip the empty bubble.
+          if (text.trim() === "") return null;
+          return (
             <div key={m.id} className={styles.askAssistant}>
-              <Markdown>{textOf(m)}</Markdown>
+              <Markdown>{text}</Markdown>
+              {m.id === streamingId && <span className={styles.caret} />}
             </div>
-          ),
+          );
+        })}
+        {awaitingAssistant && (
+          <div className={styles.askThinking}>
+            <span className={styles.shimmer}>{word}…</span>
+          </div>
         )}
         {error && <div className={styles.askError}>{error.message}</div>}
       </div>

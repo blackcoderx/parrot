@@ -365,6 +365,66 @@
   color: var(--foreground);
 }
 
+/* --- Thinking pill (Claude-Code-style shimmer + cycling words) --- */
+.askThinking {
+  align-self: flex-start;
+  max-width: 90%;
+  padding: 8px 10px;
+}
+
+.shimmer {
+  font-size: 13px;
+  font-weight: 500;
+  background: linear-gradient(
+    90deg,
+    var(--muted) 30%,
+    var(--foreground) 50%,
+    var(--muted) 70%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 1.6s linear infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* Blinking caret shown while the answer streams in. */
+.caret {
+  display: inline-block;
+  width: 7px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--accent);
+  border-radius: 1px;
+  animation: blink 1s steps(2, start) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer {
+    animation: none;
+    color: var(--muted);
+  }
+  .caret {
+    animation: none;
+  }
+}
+
 /* --- Rendered markdown inside an assistant bubble --- */
 .askAssistant > :first-child {
   margin-top: 0;
