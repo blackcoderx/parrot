@@ -140,11 +140,20 @@ function readConfigFile(): ConfigFile {
   }
 }
 
-/** Resolve an API key: env var first, then ~/.parrot/config.json. */
+/**
+ * Resolve an API key: env var first, then ~/.parrot/config.json[id].apiKey.
+ * Generic over the env var + config id so other registries (e.g. search
+ * backends in lib/search.ts) can reuse the exact same precedence.
+ */
+export function resolveApiKey(envKey: string, id: string): string | undefined {
+  return process.env[envKey] || readConfigFile()[id]?.apiKey || undefined;
+}
+
+/** Resolve a model provider's API key: env var first, then ~/.parrot/config.json. */
 export function resolveKey(id: string): string | undefined {
   const desc = getProvider(id);
   if (!desc) return undefined;
-  return process.env[desc.envKey] || readConfigFile()[id]?.apiKey || undefined;
+  return resolveApiKey(desc.envKey, id);
 }
 
 /** Resolve the base URL: saved pref → env var → config file → provider default. */

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getPrefs, setPrefs, type AiPrefs } from "@/lib/settings";
 import { PROVIDERS, hasKey, resolveBaseURL } from "@/lib/providers";
+import { SEARCH_PROVIDERS, hasSearchKey } from "@/lib/search";
 
 // GET /api/settings — current prefs + provider metadata (never the raw keys).
 export async function GET() {
@@ -14,7 +15,12 @@ export async function GET() {
     keyDetected: hasKey(p.id),
     baseURL: resolveBaseURL(p.id, prefs),
   }));
-  return Response.json({ prefs, providers });
+  const searchProviders = SEARCH_PROVIDERS.map((s) => ({
+    id: s.id,
+    label: s.label,
+    keyDetected: hasSearchKey(s.id),
+  }));
+  return Response.json({ prefs, providers, searchProviders });
 }
 
 // PUT /api/settings — save non-secret prefs.
@@ -25,6 +31,7 @@ export async function PUT(request: NextRequest) {
     activeProvider: body.activeProvider ?? current.activeProvider,
     models: body.models ?? current.models,
     baseURLs: body.baseURLs ?? current.baseURLs,
+    search: body.search ?? current.search,
   };
   setPrefs(next);
   return Response.json(next);

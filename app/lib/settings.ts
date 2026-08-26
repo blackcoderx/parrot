@@ -9,6 +9,8 @@ export interface AiPrefs {
   models: Record<string, string>;
   /** Custom base URL per provider (local/compatible runtimes). */
   baseURLs: Record<string, string>;
+  /** Web-search tool config. Keys live in env/config.json, never here. */
+  search: { enabled: boolean; provider: string };
 }
 
 const KEY = "ai";
@@ -17,6 +19,7 @@ const DEFAULT_PREFS: AiPrefs = {
   activeProvider: "anthropic",
   models: {},
   baseURLs: {},
+  search: { enabled: false, provider: "tavily" },
 };
 
 export function getPrefs(): AiPrefs {

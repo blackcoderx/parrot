@@ -15,10 +15,17 @@ interface ProviderMeta {
   baseURL: string;
 }
 
+interface SearchProviderMeta {
+  id: string;
+  label: string;
+  keyDetected: boolean;
+}
+
 interface Prefs {
   activeProvider: string;
   models: Record<string, string>;
   baseURLs: Record<string, string>;
+  search: { enabled: boolean; provider: string };
 }
 
 /**
@@ -28,6 +35,7 @@ interface Prefs {
  */
 export function SettingsPopover() {
   const [providers, setProviders] = useState<ProviderMeta[]>([]);
+  const [searchProviders, setSearchProviders] = useState<SearchProviderMeta[]>([]);
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [models, setModels] = useState<string[]>([]);
   const [saved, setSaved] = useState(false);
@@ -35,10 +43,13 @@ export function SettingsPopover() {
   useEffect(() => {
     fetch("/api/settings")
       .then((r) => r.json())
-      .then((d: { prefs: Prefs; providers: ProviderMeta[] }) => {
-        setPrefs(d.prefs);
-        setProviders(d.providers);
-      })
+      .then(
+        (d: { prefs: Prefs; providers: ProviderMeta[]; searchProviders: SearchProviderMeta[] }) => {
+          setPrefs(d.prefs);
+          setProviders(d.providers);
+          setSearchProviders(d.searchProviders ?? []);
+        },
+      )
       .catch(() => {});
   }, []);
 
@@ -57,11 +68,16 @@ export function SettingsPopover() {
   }, [prefs?.activeProvider]);
 
   const active = providers.find((p) => p.id === prefs?.activeProvider);
+  const activeSearch = searchProviders.find((s) => s.id === prefs?.search.provider);
 
   // Map id -> label so the Select trigger shows the provider name.
   const providerItems = useMemo(
     () => Object.fromEntries(providers.map((p) => [p.id, p.label] as const)),
     [providers],
+  );
+  const searchProviderItems = useMemo(
+    () => Object.fromEntries(searchProviders.map((s) => [s.id, s.label] as const)),
+    [searchProviders],
   );
 
   function update(patch: Partial<Prefs>) {
@@ -170,6 +186,70 @@ export function SettingsPopover() {
                       }
                     />
                   </label>
+                )}
+
+                <div className={styles.divider} />
+
+                <div className={styles.toggleRow}>
+                  <span className={styles.label}>Web search</span>
+                  <input
+                    type="checkbox"
+                    className={styles.checkbox}
+                    checked={prefs.search.enabled}
+                    aria-label="Enable web search"
+                    onChange={(e) =>
+                      update({ search: { ...prefs.search, enabled: e.target.checked } })
+                    }
+                  />
+                </div>
+
+                {prefs.search.enabled && (
+                  <>
+                    <label className={styles.field}>
+                      <span className={styles.label}>Search provider</span>
+                      <Select.Root
+                        items={searchProviderItems}
+                        value={prefs.search.provider}
+                        onValueChange={(v) =>
+                          update({ search: { ...prefs.search, provider: v as string } })
+                        }
+                      >
+                        <Select.Trigger className={styles.select}>
+                          <Select.Value />
+                          <Select.Icon className={styles.selectIcon}>
+                            <ChevronIcon />
+                          </Select.Icon>
+                        </Select.Trigger>
+                        <Select.Portal>
+                          <Select.Positioner
+                            className={styles.selectPositioner}
+                            side="bottom"
+                            align="start"
+                            sideOffset={6}
+                            alignItemWithTrigger={false}
+                          >
+                            <Select.Popup className={styles.selectPopup}>
+                              {searchProviders.map((s) => (
+                                <Select.Item key={s.id} value={s.id} className={styles.selectItem}>
+                                  <Select.ItemText>{s.label}</Select.ItemText>
+                                </Select.Item>
+                              ))}
+                            </Select.Popup>
+                          </Select.Positioner>
+                        </Select.Portal>
+                      </Select.Root>
+                    </label>
+
+                    {activeSearch && (
+                      <p className={styles.keyStatus}>
+                        {activeSearch.keyDetected ? (
+                          <span className={styles.ok}>● key detected</span>
+                        ) : (
+                          <span className={styles.warn}>● no key — set it in app/.env.local</span>
+                        )}
+                      </p>
+                    )}
+                  </>
                 )}
 
                 <button className={styles.save} onClick={save}>

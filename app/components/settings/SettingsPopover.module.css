@@ -158,6 +158,32 @@
   color: #b45309;
 }
 
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 2px 0;
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.toggleRow .label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
 .save {
   margin-top: 4px;
   padding: 8px 10px;
