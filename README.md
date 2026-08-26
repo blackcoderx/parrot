@@ -1,5 +1,7 @@
 # Parrot
 
+![app.png](app/public/app.png)
+
 A local-first reader for research-paper PDFs. Open a paper, read it, highlight it, and ask
 an AI about any figure, table, or passage. Everything runs on your own machine; fork it and go.
 
