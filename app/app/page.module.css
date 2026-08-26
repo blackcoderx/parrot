@@ -78,11 +78,23 @@
   flex-direction: column;
 }
 
-.row {
+.rowWrap {
   display: flex;
   align-items: center;
+  border-radius: 6px;
+  transition: background 0.12s ease;
+}
+
+.rowWrap:hover {
+  background: var(--surface);
+}
+
+.row {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
   justify-content: space-between;
-  width: 100%;
   padding: 10px 8px;
   border: none;
   background: transparent;
@@ -90,11 +102,6 @@
   font-size: 14px;
   color: var(--foreground);
   text-align: left;
-  transition: background 0.12s ease;
-}
-
-.row:hover {
-  background: var(--surface);
 }
 
 .rowTitle {
@@ -103,11 +110,120 @@
   white-space: nowrap;
 }
 
-.chevron {
+/* Remove control — hidden until the row is hovered or focused. */
+.rowDelete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  margin-right: 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
   color: var(--muted);
-  font-size: 18px;
-  line-height: 1;
-  padding-left: 12px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+
+.rowWrap:hover .rowDelete,
+.rowWrap:focus-within .rowDelete {
+  opacity: 1;
+}
+
+.rowDelete:hover,
+.rowDelete:focus-visible {
+  opacity: 1;
+  color: #dc2626;
+  background: color-mix(in srgb, #dc2626 12%, transparent);
+}
+
+/* Remove-confirmation dialog */
+.dialogBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 1, 0, 0.4);
+  transition: opacity 0.15s ease;
+}
+
+.dialogBackdrop[data-starting-style],
+.dialogBackdrop[data-ending-style] {
+  opacity: 0;
+}
+
+.dialogPopup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 40px rgba(2, 1, 0, 0.22);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.dialogPopup[data-starting-style],
+.dialogPopup[data-ending-style] {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.97);
+}
+
+.dialogTitle {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.dialogDesc {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.dialogCancel,
+.dialogConfirm {
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.dialogCancel {
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  transition: border-color 0.12s ease;
+}
+
+.dialogCancel:hover {
+  border-color: var(--muted);
+}
+
+.dialogConfirm {
+  border: none;
+  background: #dc2626;
+  color: var(--porcelain);
+  transition: opacity 0.12s ease;
+}
+
+.dialogConfirm:hover {
+  opacity: 0.9;
 }
 
 /* Settings trigger, bottom-left per the reference sketch */
