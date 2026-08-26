@@ -4,12 +4,13 @@ import fs from "node:fs";
 import path from "node:path";
 import type { LanguageModel } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { PARROT_DIR } from "./paths";
 import type { AiPrefs } from "./settings";
 
-type Kind = "anthropic" | "openai" | "compatible";
+type Kind = "anthropic" | "openai" | "google" | "compatible";
 
 interface ProviderDescriptor {
   id: string;
@@ -48,6 +49,16 @@ export const PROVIDERS: ProviderDescriptor[] = [
     needsKey: true,
     defaultBaseURL: "https://api.openai.com/v1",
     editableBaseURL: false,
+  },
+  {
+    id: "google",
+    label: "Google (Gemini)",
+    kind: "google",
+    envKey: "GOOGLE_GENERATIVE_AI_API_KEY",
+    needsKey: true,
+    defaultBaseURL: "https://generativelanguage.googleapis.com/v1beta",
+    editableBaseURL: false,
+    defaultModel: "gemini-2.5-flash",
   },
   {
     id: "xai",
@@ -177,6 +188,9 @@ export function getModel(prefs: AiPrefs): LanguageModel {
   if (desc.kind === "openai") {
     return createOpenAI({ apiKey, baseURL })(modelId);
   }
+  if (desc.kind === "google") {
+    return createGoogleGenerativeAI({ apiKey, baseURL })(modelId);
+  }
   return createOpenAICompatible({ name: id, baseURL, apiKey })(modelId);
 }
 
@@ -197,6 +211,28 @@ export async function listModels(id: string, prefs?: AiPrefs): Promise<string[]>
   if (!baseURL) return [];
   const apiKey = resolveKey(id);
   if (desc.needsKey && !apiKey) return [];
+
+  // Google's list endpoint differs from the OpenAI shape: x-goog-api-key auth and
+  // { models: [{ name: "models/…", supportedGenerationMethods }] }.
+  if (desc.kind === "google") {
+    try {
+      const res = await fetch(`${baseURL.replace(/\/$/, "")}/models?pageSize=1000`, {
+        headers: apiKey ? { "x-goog-api-key": apiKey } : {},
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) return [];
+      const json = (await res.json()) as {
+        models?: Array<{ name?: string; supportedGenerationMethods?: string[] }>;
+      };
+      return (json.models ?? [])
+        .filter((m) => m.supportedGenerationMethods?.includes("generateContent"))
+        .map((m) => (m.name ?? "").replace(/^models\//, ""))
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b));
+    } catch {
+      return [];
+    }
+  }
 
   const headers: Record<string, string> = {};
   if (desc.kind === "anthropic") {
