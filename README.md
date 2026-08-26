@@ -11,8 +11,8 @@ an AI about any figure, table, or passage. Everything runs on your own machine; 
 - **Base UI** headless components, styled with plain CSS Modules (no Tailwind)
 - **better-sqlite3** for local metadata, highlights, and chats
 - **react-pdf** (pdf.js) for rendering
-- **Vercel AI SDK** harness — multi-provider (Claude, GPT, xAI, Groq, OpenRouter, Ollama,
-  LM Studio, and any OpenAI-compatible endpoint)
+- **Vercel AI SDK** harness — multi-provider (Claude, GPT, Google Gemini, xAI, Groq, OpenRouter,
+  Ollama, LM Studio, and any OpenAI-compatible endpoint), with an optional web-search tool
 
 ## Getting started
 
@@ -44,6 +44,8 @@ To reset Parrot, delete `~/.parrot`.
 - **Ask Parrot**: chat about selected text; **Save** anchors the thread onto a highlight to
   reopen later
 - **AI pen**: screenshot a figure, table, or chart and ask about it
+- **Web search** (optional): a tool the AI can call for current information — recent papers,
+  latest results, anything past the model's knowledge cutoff — toggled on in Settings
 
 ## Configure an AI provider
 
@@ -61,6 +63,7 @@ model. Local runtimes (Ollama, LM Studio) need no key — just their base URL. S
 | --- | --- | --- |
 | Claude | `ANTHROPIC_API_KEY` | |
 | OpenAI | `OPENAI_API_KEY` | |
+| Google (Gemini) | `GOOGLE_GENERATIVE_AI_API_KEY` | |
 | xAI (Grok) | `XAI_API_KEY` | |
 | Groq | `GROQ_API_KEY` | |
 | OpenRouter | `OPENROUTER_API_KEY` | |
@@ -69,3 +72,17 @@ model. Local runtimes (Ollama, LM Studio) need no key — just their base URL. S
 | OpenAI-compatible | `OPENAI_COMPATIBLE_API_KEY` | set the base URL in Settings |
 
 Ask Parrot sends the selected text (or the cropped region image) to your configured provider.
+
+## Web search (optional)
+
+Give the AI a `web_search` tool it can call for current information — recent papers, latest
+results, an author's other work, anything past the model's knowledge cutoff. It's **off by
+default**; enable it and pick a backend in **Settings → Web search**. Bring your own key:
+
+| Backend | Env var |
+| --- | --- |
+| Tavily | `TAVILY_API_KEY` |
+| Exa | `EXA_API_KEY` |
+
+The tool is only offered to the model when web search is enabled **and** a key is present, so it
+works with any provider that supports tool calls — including local runtimes.
