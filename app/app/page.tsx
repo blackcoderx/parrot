@@ -63,6 +63,8 @@ export default function Home() {
     <div className={styles.page}>
       <main className={styles.card}>
         <h1 className={styles.wordmark}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/parrot-logo.png" alt="" className={styles.logo} />
           Parrot<span className={styles.dot}>.</span>
         </h1>
 

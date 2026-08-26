@@ -16,11 +16,20 @@
 }
 
 .wordmark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   font-size: 28px;
   font-weight: 650;
   letter-spacing: -0.02em;
   text-align: center;
   margin-bottom: 4px;
+}
+
+.logo {
+  height: 34px;
+  width: auto;
 }
 
 .dot {
