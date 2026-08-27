@@ -51,6 +51,7 @@ export function Toolbar({
           <input
             ref={inputRef}
             className={styles.pageInput}
+            style={{ width: `${Math.max(draft.length, String(numPages).length)}ch` }}
             inputMode="numeric"
             aria-label="Current page"
             value={draft}

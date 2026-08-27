@@ -165,9 +165,12 @@
 }
 
 .pageInput {
-  width: 3ch;
+  /* content-box so the ch-based width (set inline from the digit count) is the
+     room for the digits themselves, not eaten by padding/border. */
+  box-sizing: content-box;
+  min-width: 1ch;
   height: 26px;
-  padding: 0 4px;
+  padding: 0 6px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.06);
