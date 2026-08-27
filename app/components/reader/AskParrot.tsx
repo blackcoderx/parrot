@@ -80,6 +80,11 @@ function useCyclingWord(active: boolean, words: string[]): string {
 export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSaved }: Props) {
   const [input, setInput] = useState("");
   const [saved, setSaved] = useState(false);
+  // The highlight this thread is anchored to once saved. Set from the first
+  // save's response so re-saves upsert in place instead of creating duplicates.
+  const [savedHighlightId, setSavedHighlightId] = useState<string | null>(
+    anchor.kind === "existing" ? anchor.highlightId : null,
+  );
   const [pos, setPos] = useState<Pos | null>(null);
   const imageSent = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -235,21 +240,32 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
       image: i === 0 && anchor.kind === "region" ? anchor.image : null,
     }));
 
+    // Once anchored to a highlight, re-saves go through the upsert path (the
+    // server reuses the chat and replaces its messages) — no duplicate rows.
+    const existingId = anchor.kind === "existing" ? anchor.highlightId : savedHighlightId;
+
     // Chat highlights render from the accent via CSS; this is only a fallback color.
     const accent =
       getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#71F79F";
 
-    const body =
-      anchor.kind === "existing"
-        ? { documentId, highlightId: anchor.highlightId, messages: simplified }
-        : {
-            documentId,
-            highlight:
-              anchor.kind === "selection"
-                ? { page: anchor.page, rects: anchor.rects, color: accent, text: anchor.text }
-                : { page: anchor.page, rects: [anchor.rect], color: accent, text: "" },
-            messages: simplified,
-          };
+    let body;
+    if (existingId) {
+      body = { documentId, highlightId: existingId, messages: simplified };
+    } else if (anchor.kind === "region") {
+      body = {
+        documentId,
+        highlight: { page: anchor.page, rects: [anchor.rect], color: accent, text: "" },
+        messages: simplified,
+      };
+    } else if (anchor.kind === "selection") {
+      body = {
+        documentId,
+        highlight: { page: anchor.page, rects: anchor.rects, color: accent, text: anchor.text },
+        messages: simplified,
+      };
+    } else {
+      return; // "existing" anchor always has an id, so this is unreachable
+    }
 
     const res = await fetch("/api/chats", {
       method: "POST",
@@ -257,6 +273,8 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
       body: JSON.stringify(body),
     });
     if (res.ok) {
+      const data: { highlightId?: string } = await res.json().catch(() => ({}));
+      if (data.highlightId) setSavedHighlightId(data.highlightId);
       setSaved(true);
       onSaved();
     }
