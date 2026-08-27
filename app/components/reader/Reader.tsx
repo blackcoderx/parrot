@@ -38,6 +38,9 @@ export function Reader({ documentId, title, initialPage }: Props) {
   const [selection, setSelection] = useState<SelectionInfo | null>(null);
   const [aiMode, setAiMode] = useState(false);
   const [ask, setAsk] = useState<AskState | null>(null);
+  const [numPages, setNumPages] = useState(0);
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [jump, setJump] = useState<{ page: number; nonce: number } | null>(null);
   const pageRef = useRef(initialPage);
   const patchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -122,6 +125,7 @@ export function Reader({ documentId, title, initialPage }: Props) {
   // Persist reading progress (debounced) as the current page changes.
   const handlePageChange = useCallback(
     (page: number) => {
+      setCurrentPage(page);
       if (page === pageRef.current) return;
       pageRef.current = page;
       if (patchTimer.current) clearTimeout(patchTimer.current);
@@ -138,6 +142,7 @@ export function Reader({ documentId, title, initialPage }: Props) {
 
   const handleNumPages = useCallback(
     (n: number) => {
+      setNumPages(n);
       fetch(`/api/documents/${documentId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -145,6 +150,17 @@ export function Reader({ documentId, title, initialPage }: Props) {
       }).catch(() => {});
     },
     [documentId],
+  );
+
+  // Jump to a page from the toolbar (clamped), reusing PdfViewer's scroll logic.
+  const goToPage = useCallback(
+    (n: number) => {
+      if (!numPages) return;
+      const clamped = Math.min(Math.max(1, Math.round(n)), numPages);
+      setCurrentPage(clamped);
+      setJump((j) => ({ page: clamped, nonce: (j?.nonce ?? 0) + 1 }));
+    },
+    [numPages],
   );
 
   return (
@@ -162,6 +178,7 @@ export function Reader({ documentId, title, initialPage }: Props) {
           scale={scale}
           highlights={highlights}
           initialPage={initialPage}
+          scrollToPage={jump}
           aiMode={aiMode}
           onNumPages={handleNumPages}
           onPageChange={handlePageChange}
@@ -191,6 +208,9 @@ export function Reader({ documentId, title, initialPage }: Props) {
       )}
 
       <Toolbar
+        currentPage={currentPage}
+        numPages={numPages}
+        onGoToPage={goToPage}
         scale={scale}
         onZoomIn={() => setScale((s) => Math.min(MAX_SCALE, +(s + SCALE_STEP).toFixed(2)))}
         onZoomOut={() => setScale((s) => Math.max(MIN_SCALE, +(s - SCALE_STEP).toFixed(2)))}

@@ -16,6 +16,7 @@ interface Props {
   scale: number;
   highlights: Highlight[];
   initialPage: number;
+  scrollToPage: { page: number; nonce: number } | null;
   aiMode: boolean;
   onNumPages: (n: number) => void;
   onPageChange: (page: number) => void;
@@ -29,6 +30,7 @@ export function PdfViewer({
   scale,
   highlights,
   initialPage,
+  scrollToPage,
   aiMode,
   onNumPages,
   onPageChange,
@@ -60,6 +62,13 @@ export function PdfViewer({
     pageRefs.current.forEach((el) => el && observer.observe(el));
     return () => observer.disconnect();
   }, [numPages, onPageChange]);
+
+  // Jump to a requested page (from the toolbar), reusing the same scroll as restore.
+  useEffect(() => {
+    if (!scrollToPage || !numPages) return;
+    const target = pageRefs.current[scrollToPage.page - 1];
+    target?.scrollIntoView({ block: "start" });
+  }, [scrollToPage, numPages]);
 
   function handleLoad({ numPages: n }: { numPages: number }) {
     setNumPages(n);

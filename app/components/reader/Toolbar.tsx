@@ -1,10 +1,14 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { Popover } from "@base-ui-components/react/popover";
 import { HIGHLIGHT_COLORS } from "./types";
 import styles from "./Reader.module.css";
 
 interface Props {
+  currentPage: number;
+  numPages: number;
+  onGoToPage: (n: number) => void;
   scale: number;
   onZoomIn: () => void;
   onZoomOut: () => void;
@@ -15,6 +19,9 @@ interface Props {
 }
 
 export function Toolbar({
+  currentPage,
+  numPages,
+  onGoToPage,
   scale,
   onZoomIn,
   onZoomOut,
@@ -23,8 +30,41 @@ export function Toolbar({
   aiMode,
   onToggleAi,
 }: Props) {
+  const [draft, setDraft] = useState(String(currentPage));
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Keep the box in sync with scrolling, but don't clobber the user mid-type.
+  useEffect(() => {
+    if (document.activeElement !== inputRef.current) setDraft(String(currentPage));
+  }, [currentPage]);
+
+  function commit() {
+    const n = parseInt(draft, 10);
+    if (Number.isFinite(n)) onGoToPage(n);
+    setDraft(String(currentPage));
+  }
+
   return (
     <div className={styles.toolbar}>
+      {numPages > 0 && (
+        <>
+          <input
+            ref={inputRef}
+            className={styles.pageInput}
+            inputMode="numeric"
+            aria-label="Current page"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, ""))}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+            }}
+            onBlur={commit}
+            onFocus={(e) => e.currentTarget.select()}
+          />
+          <span className={styles.pageTotal}>of {numPages}</span>
+          <span className={styles.divider} aria-hidden />
+        </>
+      )}
       <button className={styles.toolBtn} onClick={onZoomOut} aria-label="Zoom out">
         −
       </button>
