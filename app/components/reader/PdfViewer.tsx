@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
+import "react-pdf/dist/Page/AnnotationLayer.css";
 import { HighlightLayer } from "./HighlightLayer";
 import { AiPenLayer } from "./AiPenLayer";
 import { NotePenLayer } from "./NotePenLayer";
@@ -93,7 +94,23 @@ export function PdfViewer({
   }
 
   return (
-    <Document file={file} onLoadSuccess={handleLoad} loading={<Loading />} error={<LoadError />}>
+    <Document
+      file={file}
+      onLoadSuccess={handleLoad}
+      loading={<Loading />}
+      error={<LoadError />}
+      // Internal links: scroll to the target page's top (same mechanism as the
+      // toolbar jump / initial-page restore; pdf.js resolves the destination to
+      // a 1-based pageNumber for us) and update the page indicator immediately —
+      // a programmatic scroll doesn't reliably trigger the tracking observer.
+      onItemClick={({ pageNumber }) => {
+        pageRefs.current[pageNumber - 1]?.scrollIntoView({ block: "start" });
+        onPageChange(pageNumber);
+      }}
+      // External links open in a new tab (rel defaults to
+      // "noopener noreferrer nofollow").
+      externalLinkTarget="_blank"
+    >
       {Array.from({ length: numPages }, (_, i) => {
         const pageNumber = i + 1;
         return (
@@ -108,7 +125,6 @@ export function PdfViewer({
             <Page
               pageNumber={pageNumber}
               scale={scale}
-              renderAnnotationLayer={false}
               renderTextLayer
               onRenderSuccess={handlePageRender}
             />
