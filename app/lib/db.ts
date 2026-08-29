@@ -30,6 +30,8 @@ export interface HighlightRow {
   rects: NormRect[];
   color: string;
   text: string;
+  /** A reader's note attached to this highlight, or null for plain highlights. */
+  note: string | null;
   created_at: number;
   /** Id of an attached saved chat thread, or null. Populated via LEFT JOIN. */
   chat_id: string | null;
@@ -75,6 +77,7 @@ function createDb(): Database.Database {
       rects       TEXT NOT NULL,
       color       TEXT NOT NULL,
       text        TEXT NOT NULL DEFAULT '',
+      note        TEXT,
       created_at  INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_highlights_document ON highlights(document_id);
@@ -101,6 +104,14 @@ function createDb(): Database.Database {
       value TEXT NOT NULL
     );
   `);
+
+  // Migrate databases created before the `note` column existed (CREATE TABLE
+  // IF NOT EXISTS above is a no-op for them).
+  const hasNote = (db.prepare("PRAGMA table_info(highlights)").all() as { name: string }[]).some(
+    (c) => c.name === "note",
+  );
+  if (!hasNote) db.exec("ALTER TABLE highlights ADD COLUMN note TEXT");
+
   return db;
 }
 
@@ -186,20 +197,31 @@ export function insertHighlight(h: {
   rects: NormRect[];
   color: string;
   text: string;
+  note?: string | null;
 }): HighlightRow {
+  const created_at = Date.now();
+  const note = h.note ?? null;
   db.prepare(
-    `INSERT INTO highlights (id, document_id, page, rects, color, text, created_at)
-     VALUES (@id, @document_id, @page, @rects, @color, @text, @created_at)`,
+    `INSERT INTO highlights (id, document_id, page, rects, color, text, note, created_at)
+     VALUES (@id, @document_id, @page, @rects, @color, @text, @note, @created_at)`,
   ).run({
     ...h,
     rects: JSON.stringify(h.rects),
-    created_at: Date.now(),
+    note,
+    created_at,
   });
   return {
     ...h,
-    created_at: Date.now(),
+    note,
+    created_at,
     chat_id: null,
   };
+}
+
+/** Update the note text on a highlight. Returns false if no such highlight. */
+export function updateHighlightNote(id: string, note: string): boolean {
+  const info = db.prepare("UPDATE highlights SET note = ? WHERE id = ?").run(note, id);
+  return info.changes > 0;
 }
 
 export function deleteHighlight(id: string): void {

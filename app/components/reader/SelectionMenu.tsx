@@ -8,11 +8,12 @@ interface Props {
   onCopy: () => void;
   onHighlight: () => void;
   onAsk: () => void;
+  onNote: () => void;
   onClose: () => void;
 }
 
-/** Popup shown over a text selection: Copy / Highlight / Ask Parrot. */
-export function SelectionMenu({ anchorRect, onCopy, onHighlight, onAsk, onClose }: Props) {
+/** Popup shown over a text selection: Copy / Highlight / Ask Parrot / Note. */
+export function SelectionMenu({ anchorRect, onCopy, onHighlight, onAsk, onNote, onClose }: Props) {
   const open = anchorRect !== null;
 
   return (
@@ -37,6 +38,9 @@ export function SelectionMenu({ anchorRect, onCopy, onHighlight, onAsk, onClose 
             </button>
             <button className={styles.menuItem} onClick={onAsk}>
               Ask Parrot
+            </button>
+            <button className={styles.menuItem} onClick={onNote}>
+              Note
             </button>
           </Popover.Popup>
         </Popover.Positioner>

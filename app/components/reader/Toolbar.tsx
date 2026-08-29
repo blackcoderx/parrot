@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Popover } from "@base-ui-components/react/popover";
 import { HIGHLIGHT_COLORS } from "./types";
+import { NoteIcon } from "./NoteIcon";
 import styles from "./Reader.module.css";
 
 interface Props {
@@ -16,6 +17,8 @@ interface Props {
   onColorChange: (color: string) => void;
   aiMode: boolean;
   onToggleAi: () => void;
+  noteMode: boolean;
+  onToggleNote: () => void;
 }
 
 export function Toolbar({
@@ -29,6 +32,8 @@ export function Toolbar({
   onColorChange,
   aiMode,
   onToggleAi,
+  noteMode,
+  onToggleNote,
 }: Props) {
   const [draft, setDraft] = useState(String(currentPage));
   const inputRef = useRef<HTMLInputElement>(null);
@@ -107,6 +112,17 @@ export function Toolbar({
         title="AI pen — select a region to ask about"
       >
         <AiPenIcon />
+      </button>
+
+      <button
+        className={`${styles.toolBtn} ${styles.penBtn}`}
+        data-active={noteMode || undefined}
+        onClick={onToggleNote}
+        aria-label="Note pen"
+        aria-pressed={noteMode}
+        title="Note pen — select a region to note"
+      >
+        <NoteIcon />
       </button>
     </div>
   );

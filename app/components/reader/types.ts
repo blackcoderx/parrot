@@ -13,12 +13,17 @@ export interface Highlight {
   rects: NormRect[];
   color: string;
   text: string;
+  /** A reader's note attached to this highlight, or null for plain highlights. */
+  note: string | null;
   created_at: number;
   /** Id of an attached saved chat thread, or null. */
   chat_id: string | null;
 }
 
 export type Tool = "select" | "highlight" | "ai";
+
+/** Faint warm-amber wash for note highlights (kept readable over text). */
+export const NOTE_COLOR = "rgba(245, 179, 1, 0.16)";
 
 /** Preset highlight colors (semi-transparent so text stays readable). */
 export const HIGHLIGHT_COLORS = [

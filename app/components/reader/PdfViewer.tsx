@@ -5,6 +5,7 @@ import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
 import { HighlightLayer } from "./HighlightLayer";
 import { AiPenLayer } from "./AiPenLayer";
+import { NotePenLayer } from "./NotePenLayer";
 import type { Highlight, NormRect } from "./types";
 import styles from "./Reader.module.css";
 
@@ -18,11 +19,14 @@ interface Props {
   initialPage: number;
   scrollToPage: { page: number; nonce: number } | null;
   aiMode: boolean;
+  noteMode: boolean;
   onNumPages: (n: number) => void;
   onPageChange: (page: number) => void;
   onDeleteHighlight: (id: string) => void;
   onOpenHighlight: (h: Highlight, anchorRect: DOMRect) => void;
+  onOpenNote: (h: Highlight, anchorRect: DOMRect) => void;
   onRegion: (page: number, rect: NormRect, image: string, anchorRect: DOMRect) => void;
+  onNoteRegion: (page: number, rect: NormRect, anchorRect: DOMRect) => void;
 }
 
 export function PdfViewer({
@@ -32,11 +36,14 @@ export function PdfViewer({
   initialPage,
   scrollToPage,
   aiMode,
+  noteMode,
   onNumPages,
   onPageChange,
   onDeleteHighlight,
   onOpenHighlight,
+  onOpenNote,
   onRegion,
+  onNoteRegion,
 }: Props) {
   const [numPages, setNumPages] = useState(0);
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -109,8 +116,10 @@ export function PdfViewer({
               highlights={highlights.filter((h) => h.page === pageNumber)}
               onDelete={onDeleteHighlight}
               onOpen={onOpenHighlight}
+              onOpenNote={onOpenNote}
             />
             {aiMode && <AiPenLayer pageNumber={pageNumber} onRegion={onRegion} />}
+            {noteMode && <NotePenLayer pageNumber={pageNumber} onRegion={onNoteRegion} />}
           </div>
         );
       })}

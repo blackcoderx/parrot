@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { Toolbar } from "./Toolbar";
 import { SelectionMenu } from "./SelectionMenu";
 import { AskParrot, type AskAnchor } from "./AskParrot";
+import { NoteEditor, type NoteAnchor } from "./NoteEditor";
 import { readSelection, type SelectionInfo } from "./selection";
 import { HIGHLIGHT_COLORS, type Highlight, type NormRect } from "./types";
 import styles from "./Reader.module.css";
@@ -27,6 +28,11 @@ interface AskState {
   anchorRect: DOMRect;
 }
 
+interface NoteState {
+  anchor: NoteAnchor;
+  anchorRect: DOMRect;
+}
+
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 3;
 const SCALE_STEP = 0.2;
@@ -37,7 +43,9 @@ export function Reader({ documentId, title, initialPage }: Props) {
   const [activeColor, setActiveColor] = useState(HIGHLIGHT_COLORS[0]);
   const [selection, setSelection] = useState<SelectionInfo | null>(null);
   const [aiMode, setAiMode] = useState(false);
+  const [noteMode, setNoteMode] = useState(false);
   const [ask, setAsk] = useState<AskState | null>(null);
+  const [note, setNote] = useState<NoteState | null>(null);
   const [numPages, setNumPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [jump, setJump] = useState<{ page: number; nonce: number } | null>(null);
@@ -55,11 +63,11 @@ export function Reader({ documentId, title, initialPage }: Props) {
     loadHighlights();
   }, [loadHighlights]);
 
-  // Detect text selections inside the viewer (ignored while the AI pen is active).
+  // Detect text selections inside the viewer (ignored while a pen tool is active).
   const onMouseUp = useCallback(() => {
-    if (aiMode) return;
+    if (aiMode || noteMode) return;
     setTimeout(() => setSelection(readSelection()), 0);
-  }, [aiMode]);
+  }, [aiMode, noteMode]);
 
   const clearSelection = useCallback(() => {
     setSelection(null);
@@ -115,6 +123,32 @@ export function Reader({ documentId, title, initialPage }: Props) {
   // Reopen a saved thread from its highlight.
   function handleOpenHighlight(h: Highlight, anchorRect: DOMRect) {
     setAsk({ anchor: { kind: "existing", highlightId: h.id }, anchorRect });
+  }
+
+  // Add a note from a text selection.
+  function handleNote() {
+    if (!selection) return;
+    setNote({
+      anchor: {
+        kind: "selection",
+        page: selection.page,
+        rects: selection.rects,
+        text: selection.text,
+      },
+      anchorRect: selection.anchorRect,
+    });
+    clearSelection();
+  }
+
+  // Add a note from a note-pen region.
+  function handleNoteRegion(page: number, rect: NormRect, anchorRect: DOMRect) {
+    setNoteMode(false);
+    setNote({ anchor: { kind: "region", page, rect }, anchorRect });
+  }
+
+  // Open an existing note from its highlight.
+  function handleOpenNote(h: Highlight, anchorRect: DOMRect) {
+    setNote({ anchor: { kind: "existing", highlight: h }, anchorRect });
   }
 
   async function handleDeleteHighlight(id: string) {
@@ -180,11 +214,14 @@ export function Reader({ documentId, title, initialPage }: Props) {
           initialPage={initialPage}
           scrollToPage={jump}
           aiMode={aiMode}
+          noteMode={noteMode}
           onNumPages={handleNumPages}
           onPageChange={handlePageChange}
           onDeleteHighlight={handleDeleteHighlight}
           onOpenHighlight={handleOpenHighlight}
+          onOpenNote={handleOpenNote}
           onRegion={handleRegion}
+          onNoteRegion={handleNoteRegion}
         />
       </div>
 
@@ -193,6 +230,7 @@ export function Reader({ documentId, title, initialPage }: Props) {
         onCopy={handleCopy}
         onHighlight={handleHighlight}
         onAsk={handleAsk}
+        onNote={handleNote}
         onClose={clearSelection}
       />
 
@@ -207,6 +245,16 @@ export function Reader({ documentId, title, initialPage }: Props) {
         />
       )}
 
+      {note && (
+        <NoteEditor
+          documentId={documentId}
+          anchorRect={note.anchorRect}
+          anchor={note.anchor}
+          onClose={() => setNote(null)}
+          onSaved={loadHighlights}
+        />
+      )}
+
       <Toolbar
         currentPage={currentPage}
         numPages={numPages}
@@ -217,7 +265,19 @@ export function Reader({ documentId, title, initialPage }: Props) {
         activeColor={activeColor}
         onColorChange={setActiveColor}
         aiMode={aiMode}
-        onToggleAi={() => setAiMode((v) => !v)}
+        onToggleAi={() =>
+          setAiMode((v) => {
+            if (!v) setNoteMode(false);
+            return !v;
+          })
+        }
+        noteMode={noteMode}
+        onToggleNote={() =>
+          setNoteMode((v) => {
+            if (!v) setAiMode(false);
+            return !v;
+          })
+        }
       />
     </div>
   );

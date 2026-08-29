@@ -620,3 +620,136 @@
   color: var(--muted);
   padding: 0 12px 10px;
 }
+
+/* Note highlights — faint warm amber so the text underneath stays readable */
+.noteHighlight {
+  position: absolute;
+  border-radius: 2px;
+  pointer-events: auto;
+  cursor: pointer;
+  background: rgba(245, 179, 1, 0.16);
+  transition: background 0.1s ease;
+}
+
+.noteHighlight:hover {
+  background: rgba(245, 179, 1, 0.3);
+}
+
+/* Small corner marker on a note highlight */
+.noteBadge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #f5b301;
+  color: #3a2c00;
+  box-shadow: 0 1px 3px rgba(2, 1, 0, 0.25);
+  pointer-events: none;
+}
+
+/* Note-pen drag layer (per page) */
+.notePenLayer {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+  z-index: 2;
+}
+
+.notePenBox {
+  position: absolute;
+  border: 1.5px dashed #f5b301;
+  background: rgba(245, 179, 1, 0.16);
+  pointer-events: none;
+}
+
+/* Note editor window (mirrors the Ask Parrot window shell) */
+.notePanel {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+  height: 240px;
+  min-width: 240px;
+  min-height: 160px;
+  max-width: 96vw;
+  max-height: 90vh;
+  padding: 0;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(2, 1, 0, 0.22);
+  overflow: hidden;
+  resize: both;
+  will-change: left, top;
+}
+
+.noteHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: move;
+  user-select: none;
+  touch-action: none;
+}
+
+.noteTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--foreground);
+}
+
+.noteTitle {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.noteTextarea {
+  flex: 1;
+  resize: none;
+  border: none;
+  outline: none;
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  font-family: inherit;
+  color: var(--foreground);
+  background: var(--background);
+}
+
+.noteTextarea::placeholder {
+  color: var(--muted);
+}
+
+.noteActions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.noteDelete {
+  margin-right: auto;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 550;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.noteDelete:hover {
+  color: var(--foreground);
+}

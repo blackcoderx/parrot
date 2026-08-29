@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
     rects?: NormRect[];
     color?: string;
     text?: string;
+    note?: string | null;
   };
 
   if (!body.documentId || typeof body.page !== "number" || !body.rects?.length || !body.color) {
@@ -32,6 +33,7 @@ export async function POST(request: NextRequest) {
     rects: body.rects,
     color: body.color,
     text: body.text ?? "",
+    note: body.note ?? null,
   });
 
   return Response.json(highlight, { status: 201 });
