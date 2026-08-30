@@ -90,6 +90,9 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
   const scrollRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ dx: number; dy: number } | null>(null);
+  // Holds the latest save action for the window-level Ctrl/Cmd+Enter shortcut,
+  // so the keydown listener can stay stable without a stale closure.
+  const saveRef = useRef<() => void>(() => {});
 
   const contextText = anchor.kind === "selection" ? anchor.text : undefined;
 
@@ -124,10 +127,14 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Escape closes; re-clamp if the window is resized.
+  // Escape closes, Ctrl/Cmd+Enter saves; re-clamp if the window is resized.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
+      else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        saveRef.current();
+      }
     }
     function onResize() {
       const el = panelRef.current;
@@ -282,6 +289,13 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
 
   const regionImage = anchor.kind === "region" ? anchor.image : null;
   const canSave = useMemo(() => messages.length > 0 && !busy, [messages.length, busy]);
+  // Keep the shortcut's save action current (guarded like the Save button) so
+  // the stable window keydown listener always calls the latest save().
+  useEffect(() => {
+    saveRef.current = () => {
+      if (canSave) save();
+    };
+  });
 
   return (
     <div
@@ -297,7 +311,7 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
         onPointerUp={onHeaderPointerUp}
       >
         <span className={styles.askTitle}>Ask Parrot</span>
-        <button className={styles.askClose} onClick={onClose} aria-label="Close">
+        <button className={styles.askClose} onClick={onClose} aria-label="Close" title="Close (Esc)">
           ×
         </button>
       </div>
@@ -350,13 +364,14 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
           autoFocus
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") submit();
+            // Plain Enter sends; Ctrl/Cmd+Enter bubbles to the window save handler.
+            if (e.key === "Enter" && !e.metaKey && !e.ctrlKey) submit();
           }}
         />
         <button className={styles.askSend} onClick={submit} disabled={busy}>
           {busy ? "…" : "Send"}
         </button>
-        <button className={styles.askSave} onClick={save} disabled={!canSave}>
+        <button className={styles.askSave} onClick={save} disabled={!canSave} title="Save (Ctrl+Enter)">
           {saved ? "Saved" : "Save"}
         </button>
       </div>
