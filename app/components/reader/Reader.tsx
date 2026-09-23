@@ -7,6 +7,8 @@ import { Toolbar } from "./Toolbar";
 import { SelectionMenu } from "./SelectionMenu";
 import { AskParrot, type AskAnchor } from "./AskParrot";
 import { NoteEditor, type NoteAnchor } from "./NoteEditor";
+import { OutlinePanel } from "./OutlinePanel";
+import { loadOutline, type OutlineNode, type PdfDocument } from "./outline";
 import { readSelection, type SelectionInfo } from "./selection";
 import { HIGHLIGHT_COLORS, type Highlight, type NormRect } from "./types";
 import styles from "./Reader.module.css";
@@ -36,6 +38,7 @@ interface NoteState {
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 3;
 const SCALE_STEP = 0.2;
+const OUTLINE_KEY = "parrot.outlineOpen";
 
 export function Reader({ documentId, title, initialPage }: Props) {
   const [scale, setScale] = useState(1.2);
@@ -48,7 +51,11 @@ export function Reader({ documentId, title, initialPage }: Props) {
   const [note, setNote] = useState<NoteState | null>(null);
   const [numPages, setNumPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(initialPage);
-  const [jump, setJump] = useState<{ page: number; nonce: number } | null>(null);
+  const [jump, setJump] = useState<{ page: number; y?: number | null; nonce: number } | null>(
+    null,
+  );
+  const [outlineOpen, setOutlineOpen] = useState(false);
+  const [outline, setOutline] = useState<OutlineNode[] | null>(null);
   const pageRef = useRef(initialPage);
   const patchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -62,6 +69,33 @@ export function Reader({ documentId, title, initialPage }: Props) {
   useEffect(() => {
     loadHighlights();
   }, [loadHighlights]);
+
+  function toggleOutline() {
+    setOutlineOpen((open) => {
+      try {
+        localStorage.setItem(OUTLINE_KEY, open ? "0" : "1");
+      } catch {}
+      return !open;
+    });
+  }
+
+  // Once the PDF loads: restore whether the contents sidebar was open (a per-browser
+  // convenience, read client-side only to keep hydration clean) and read its outline.
+  const handleDocument = useCallback((pdf: PdfDocument) => {
+    try {
+      if (localStorage.getItem(OUTLINE_KEY) === "1") setOutlineOpen(true);
+    } catch {}
+    setOutline(null);
+    loadOutline(pdf)
+      .then(setOutline)
+      .catch(() => setOutline([]));
+  }, []);
+
+  function handleOutlineSelect(node: OutlineNode) {
+    if (node.page === null) return;
+    setCurrentPage(node.page);
+    setJump((j) => ({ page: node.page!, y: node.y, nonce: (j?.nonce ?? 0) + 1 }));
+  }
 
   // Detect text selections inside the viewer (ignored while a pen tool is active).
   const onMouseUp = useCallback(() => {
@@ -198,7 +232,11 @@ export function Reader({ documentId, title, initialPage }: Props) {
   );
 
   return (
-    <div className={styles.reader} data-ai={aiMode || undefined}>
+    <div
+      className={styles.reader}
+      data-ai={aiMode || undefined}
+      data-outline={outlineOpen || undefined}
+    >
       <header className={styles.header}>
         <Link href="/" className={styles.back} aria-label="Back to library">
           ‹ Library
@@ -206,23 +244,34 @@ export function Reader({ documentId, title, initialPage }: Props) {
         <h1 className={styles.docTitle}>{title}</h1>
       </header>
 
-      <div className={styles.viewer} onMouseUp={onMouseUp}>
-        <PdfViewer
-          documentId={documentId}
-          scale={scale}
-          highlights={highlights}
-          initialPage={initialPage}
-          scrollToPage={jump}
-          aiMode={aiMode}
-          noteMode={noteMode}
-          onNumPages={handleNumPages}
-          onPageChange={handlePageChange}
-          onDeleteHighlight={handleDeleteHighlight}
-          onOpenHighlight={handleOpenHighlight}
-          onOpenNote={handleOpenNote}
-          onRegion={handleRegion}
-          onNoteRegion={handleNoteRegion}
-        />
+      <div className={styles.body}>
+        {outlineOpen && (
+          <OutlinePanel
+            nodes={outline}
+            currentPage={currentPage}
+            onSelect={handleOutlineSelect}
+            onClose={toggleOutline}
+          />
+        )}
+        <div className={styles.viewer} onMouseUp={onMouseUp}>
+          <PdfViewer
+            documentId={documentId}
+            scale={scale}
+            highlights={highlights}
+            initialPage={initialPage}
+            scrollToPage={jump}
+            aiMode={aiMode}
+            noteMode={noteMode}
+            onNumPages={handleNumPages}
+            onDocument={handleDocument}
+            onPageChange={handlePageChange}
+            onDeleteHighlight={handleDeleteHighlight}
+            onOpenHighlight={handleOpenHighlight}
+            onOpenNote={handleOpenNote}
+            onRegion={handleRegion}
+            onNoteRegion={handleNoteRegion}
+          />
+        </div>
       </div>
 
       <SelectionMenu
@@ -256,6 +305,8 @@ export function Reader({ documentId, title, initialPage }: Props) {
       )}
 
       <Toolbar
+        outlineOpen={outlineOpen}
+        onToggleOutline={toggleOutline}
         currentPage={currentPage}
         numPages={numPages}
         onGoToPage={goToPage}

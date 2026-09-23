@@ -7,6 +7,8 @@ import { NoteIcon } from "./NoteIcon";
 import styles from "./Reader.module.css";
 
 interface Props {
+  outlineOpen: boolean;
+  onToggleOutline: () => void;
   currentPage: number;
   numPages: number;
   onGoToPage: (n: number) => void;
@@ -22,6 +24,8 @@ interface Props {
 }
 
 export function Toolbar({
+  outlineOpen,
+  onToggleOutline,
   currentPage,
   numPages,
   onGoToPage,
@@ -51,6 +55,18 @@ export function Toolbar({
 
   return (
     <div className={styles.toolbar}>
+      <button
+        className={`${styles.toolBtn} ${styles.penBtn}`}
+        data-active={outlineOpen || undefined}
+        onClick={onToggleOutline}
+        aria-label="Contents"
+        aria-pressed={outlineOpen}
+        title="Contents — jump to a section"
+      >
+        <OutlineIcon />
+      </button>
+      <span className={styles.divider} aria-hidden />
+
       {numPages > 0 && (
         <>
           <input
@@ -125,6 +141,19 @@ export function Toolbar({
         <NoteIcon />
       </button>
     </div>
+  );
+}
+
+function OutlineIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M4 6h16M8 12h12M8 18h12"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 

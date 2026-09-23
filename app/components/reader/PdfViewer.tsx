@@ -8,6 +8,7 @@ import { HighlightLayer } from "./HighlightLayer";
 import { AiPenLayer } from "./AiPenLayer";
 import { NotePenLayer } from "./NotePenLayer";
 import type { Highlight, NormRect } from "./types";
+import type { PdfDocument } from "./outline";
 import styles from "./Reader.module.css";
 
 // Serve the worker from /public (copied from pdfjs-dist) — reliable across bundlers.
@@ -18,10 +19,12 @@ interface Props {
   scale: number;
   highlights: Highlight[];
   initialPage: number;
-  scrollToPage: { page: number; nonce: number } | null;
+  /** `y` (0..1 down the page) scrolls to a spot within the page instead of its top. */
+  scrollToPage: { page: number; y?: number | null; nonce: number } | null;
   aiMode: boolean;
   noteMode: boolean;
   onNumPages: (n: number) => void;
+  onDocument: (pdf: PdfDocument) => void;
   onPageChange: (page: number) => void;
   onDeleteHighlight: (id: string) => void;
   onOpenHighlight: (h: Highlight, anchorRect: DOMRect) => void;
@@ -39,6 +42,7 @@ export function PdfViewer({
   aiMode,
   noteMode,
   onNumPages,
+  onDocument,
   onPageChange,
   onDeleteHighlight,
   onOpenHighlight,
@@ -75,12 +79,21 @@ export function PdfViewer({
   useEffect(() => {
     if (!scrollToPage || !numPages) return;
     const target = pageRefs.current[scrollToPage.page - 1];
-    target?.scrollIntoView({ block: "start" });
+    if (!target) return;
+    if (scrollToPage.y == null) {
+      target.scrollIntoView({ block: "start" });
+      return;
+    }
+    // Land the spot just below the sticky header, with a little breathing room.
+    const header = parseFloat(getComputedStyle(target).getPropertyValue("--reader-header-h")) || 0;
+    const top = target.getBoundingClientRect().top + window.scrollY;
+    window.scrollTo({ top: top + scrollToPage.y * target.offsetHeight - header - 12 });
   }, [scrollToPage, numPages]);
 
-  function handleLoad({ numPages: n }: { numPages: number }) {
-    setNumPages(n);
-    onNumPages(n);
+  function handleLoad(pdf: PdfDocument) {
+    setNumPages(pdf.numPages);
+    onNumPages(pdf.numPages);
+    onDocument(pdf);
   }
 
   // Restore scroll to the last-read page once pages exist.
