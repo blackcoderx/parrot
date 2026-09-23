@@ -259,11 +259,7 @@ export function Reader({ documentId, title, initialPage }: Props) {
   );
 
   return (
-    <div
-      className={styles.reader}
-      data-ai={aiMode || undefined}
-      data-outline={outlineOpen || undefined}
-    >
+    <div className={styles.reader} data-ai={aiMode || undefined}>
       <header className={styles.header}>
         <Link href="/" className={styles.back} aria-label="Back to library">
           ‹ Library

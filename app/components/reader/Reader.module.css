@@ -47,19 +47,34 @@
   display: flex;
 }
 
-/* Contents (outline) sidebar */
+/* Contents (outline) sidebar — floats over the pages, below the header. */
 .outline {
-  position: sticky;
+  position: fixed;
   top: var(--reader-header-h);
-  align-self: flex-start;
+  bottom: 0;
+  left: 0;
   z-index: 4;
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
   width: var(--outline-w);
-  height: calc(100vh - var(--reader-header-h));
+  max-width: 85vw;
   background: var(--background);
   border-right: 1px solid var(--border);
+  box-shadow: 8px 0 30px rgba(2, 1, 0, 0.12);
+  animation: outlineIn 0.2s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+@keyframes outlineIn {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .outline {
+    animation: none;
+  }
 }
 
 .outlineHeader {
@@ -198,24 +213,6 @@
   font-size: 11px;
   opacity: 0.7;
   font-variant-numeric: tabular-nums;
-}
-
-/* Keep the floating toolbar centred over the page column, not the whole window. */
-.reader[data-outline] .toolbar {
-  left: calc(50% + var(--outline-w) / 2);
-}
-
-/* Narrow windows: the sidebar floats over the pages instead of squeezing them. */
-@media (max-width: 720px) {
-  .outline {
-    position: fixed;
-    left: 0;
-    box-shadow: 0 8px 30px rgba(2, 1, 0, 0.18);
-  }
-
-  .reader[data-outline] .toolbar {
-    left: 50%;
-  }
 }
 
 /* Viewer / pages */
