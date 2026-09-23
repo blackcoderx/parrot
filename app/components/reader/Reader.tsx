@@ -8,6 +8,7 @@ import { SelectionMenu } from "./SelectionMenu";
 import { AskParrot, type AskAnchor } from "./AskParrot";
 import { NoteEditor, type NoteAnchor } from "./NoteEditor";
 import { OutlinePanel } from "./OutlinePanel";
+import { Flashcards, type FlashView } from "./Flashcards";
 import { headingY, loadOutline, type OutlineNode, type PdfDocument } from "./outline";
 import { readSelection, type SelectionInfo } from "./selection";
 import { HIGHLIGHT_COLORS, type Highlight, type NormRect } from "./types";
@@ -56,6 +57,9 @@ export function Reader({ documentId, title, initialPage }: Props) {
   );
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [outline, setOutline] = useState<OutlineNode[] | null>(null);
+  const [flashOpen, setFlashOpen] = useState(false);
+  const [flashView, setFlashView] = useState<FlashView>({ kind: "review" });
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const cachedOutline = useRef<Promise<OutlineNode[] | null> | null>(null);
   const pdfRef = useRef<PdfDocument | null>(null);
   const pageRef = useRef(initialPage);
@@ -327,7 +331,31 @@ export function Reader({ documentId, title, initialPage }: Props) {
         />
       )}
 
+      <Flashcards
+        documentId={documentId}
+        open={flashOpen}
+        view={flashView}
+        toolbarRef={toolbarRef}
+        onOpenChange={setFlashOpen}
+        onViewChange={setFlashView}
+      />
+
       <Toolbar
+        toolbarRef={toolbarRef}
+        flashOpen={flashOpen && flashView.kind === "review"}
+        onToggleFlashcards={() => {
+          // Already reviewing → close; otherwise open (or switch) to the review view.
+          if (flashOpen && flashView.kind === "review") return setFlashOpen(false);
+          setFlashView({ kind: "review" });
+          setFlashOpen(true);
+        }}
+        onNewFlashcard={() => {
+          if (flashOpen && flashView.kind === "form" && !flashView.editing) {
+            return setFlashOpen(false);
+          }
+          setFlashView({ kind: "form", editing: null });
+          setFlashOpen(true);
+        }}
         outlineOpen={outlineOpen}
         onToggleOutline={toggleOutline}
         currentPage={currentPage}

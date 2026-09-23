@@ -301,6 +301,7 @@
   align-items: center;
   gap: 4px;
   padding: 6px 8px;
+  white-space: nowrap;
   background: var(--black);
   border-radius: 12px;
   box-shadow: 0 8px 30px rgba(2, 1, 0, 0.3);
@@ -950,4 +951,362 @@
 
 .noteDelete:hover {
   color: var(--foreground);
+}
+
+/* Flashcards popover (opens centred above the toolbar) */
+.flashPositioner {
+  z-index: 20;
+}
+
+.flashPopup {
+  display: flex;
+  flex-direction: column;
+  width: min(700px, 94vw);
+  max-height: min(560px, var(--available-height));
+  overflow: hidden;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(2, 1, 0, 0.22);
+  outline: none;
+  transform-origin: var(--transform-origin);
+  transition:
+    opacity 0.18s ease,
+    transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.flashPopup[data-starting-style],
+.flashPopup[data-ending-style] {
+  opacity: 0;
+  transform: translateY(10px) scale(0.96);
+}
+
+.flashHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.flashTitle {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.flashCount {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.flashHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.flashIconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.flashIconBtn:hover {
+  background: var(--surface);
+  color: var(--accent);
+}
+
+.flashEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 300px;
+  padding: 24px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Stage: ‹ card deck › */
+.flashStage {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 16px 12px;
+}
+
+.flashArrow {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--background);
+  color: var(--foreground);
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.flashArrow:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.flashArrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* The deck: the current card with up to two sheets peeking out behind it. */
+.flashDeck {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 320px;
+  perspective: 1200px;
+  /* Own stacking context so the back sheet (z-index -1) stays inside the popup. */
+  isolation: isolate;
+}
+
+.flashDeck[data-stack]::before,
+.flashDeck[data-stack="2"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.flashDeck[data-stack]::before {
+  transform: translate(6px, 6px) rotate(1.2deg);
+}
+
+.flashDeck[data-stack="2"]::after {
+  z-index: -1;
+  transform: translate(12px, 11px) rotate(2.4deg);
+  opacity: 0.6;
+}
+
+.flashSlide {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  animation: flashSlideNext 0.28s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.flashSlide[data-direction="prev"] {
+  animation-name: flashSlidePrev;
+}
+
+@keyframes flashSlideNext {
+  from {
+    opacity: 0;
+    transform: translateX(28px) rotate(1.5deg);
+  }
+}
+
+@keyframes flashSlidePrev {
+  from {
+    opacity: 0;
+    transform: translateX(-28px) rotate(-1.5deg);
+  }
+}
+
+.flashCard {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  transition: transform 0.45s cubic-bezier(0.3, 0.7, 0.2, 1);
+  border-radius: 12px;
+  outline: none;
+}
+
+.flashCard[data-revealed] {
+  transform: rotateY(180deg);
+}
+
+.flashCard:focus-visible .flashFace {
+  border-color: var(--accent);
+}
+
+.flashFace {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 22px 24px;
+  overflow-y: auto;
+  text-align: center;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(2, 1, 0, 0.08);
+  backface-visibility: hidden;
+}
+
+.flashBack {
+  transform: rotateY(180deg);
+}
+
+.flashLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.flashBack .flashLabel {
+  color: var(--accent);
+}
+
+.flashText {
+  font-size: 19px;
+  font-weight: 550;
+  line-height: 1.45;
+  color: var(--foreground);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.flashHint {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+
+.flashCaption {
+  position: absolute;
+  bottom: 12px;
+  font-size: 11px;
+  color: var(--muted);
+  opacity: 0.8;
+}
+
+.flashFooter {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px 14px;
+}
+
+.flashTextBtn {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 550;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.flashTextBtn:hover {
+  background: var(--surface);
+  color: var(--accent);
+}
+
+.flashDanger:hover {
+  color: #d93025;
+}
+
+.flashConfirm {
+  font-size: 12px;
+  color: var(--foreground);
+  margin-right: 4px;
+}
+
+/* Create / edit form */
+.flashForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.flashField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--foreground);
+}
+
+.flashField em {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.flashField textarea,
+.flashField input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.12s ease;
+}
+
+.flashField textarea:focus,
+.flashField input:focus {
+  border-color: var(--accent);
+}
+
+.flashField textarea::placeholder,
+.flashField input::placeholder {
+  color: var(--muted);
+}
+
+.flashFormActions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+}
+
+.flashError {
+  margin-right: auto;
+  font-size: 12px;
+  color: #d93025;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flashPopup,
+  .flashCard {
+    transition: none;
+  }
+
+  .flashSlide {
+    animation: none;
+  }
 }

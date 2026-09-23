@@ -20,7 +20,17 @@ export interface Highlight {
   chat_id: string | null;
 }
 
-export type Tool = "select" | "highlight" | "ai";
+export interface Flashcard {
+  id: string;
+  document_id: string;
+  question: string;
+  hint: string | null;
+  answer: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export type Tool ="select" | "highlight" | "ai";
 
 /** Faint warm-amber wash for note highlights (kept readable over text). */
 export const NOTE_COLOR = "rgba(245, 179, 1, 0.16)";

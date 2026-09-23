@@ -7,6 +7,10 @@ import { NoteIcon } from "./NoteIcon";
 import styles from "./Reader.module.css";
 
 interface Props {
+  toolbarRef: React.Ref<HTMLDivElement>;
+  flashOpen: boolean;
+  onToggleFlashcards: () => void;
+  onNewFlashcard: () => void;
   outlineOpen: boolean;
   onToggleOutline: () => void;
   currentPage: number;
@@ -24,6 +28,10 @@ interface Props {
 }
 
 export function Toolbar({
+  toolbarRef,
+  flashOpen,
+  onToggleFlashcards,
+  onNewFlashcard,
   outlineOpen,
   onToggleOutline,
   currentPage,
@@ -54,7 +62,7 @@ export function Toolbar({
   }
 
   return (
-    <div className={styles.toolbar}>
+    <div className={styles.toolbar} ref={toolbarRef}>
       <button
         className={`${styles.toolBtn} ${styles.penBtn}`}
         data-active={outlineOpen || undefined}
@@ -140,7 +148,51 @@ export function Toolbar({
       >
         <NoteIcon />
       </button>
+
+      <span className={styles.divider} aria-hidden />
+
+      <button
+        className={`${styles.toolBtn} ${styles.penBtn}`}
+        data-active={flashOpen || undefined}
+        onClick={onToggleFlashcards}
+        aria-label="Flashcards"
+        aria-pressed={flashOpen}
+        title="Flashcards — review this document's cards"
+      >
+        <FlashcardsIcon />
+      </button>
+      <button
+        className={`${styles.toolBtn} ${styles.penBtn}`}
+        onClick={onNewFlashcard}
+        aria-label="New flashcard"
+        title="New flashcard"
+      >
+        <NewFlashcardIcon />
+      </button>
     </div>
+  );
+}
+
+function FlashcardsIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <rect x="3.5" y="7" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M7.5 4h11A2 2 0 0 1 20.5 6v11"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function NewFlashcardIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <rect x="3.5" y="5" width="17" height="14" rx="2" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M12 9v6M9 12h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
   );
 }
 

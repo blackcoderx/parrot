@@ -42,6 +42,17 @@ interface HighlightDbRow extends Omit<HighlightRow, "rects"> {
   rects: string;
 }
 
+export interface FlashcardRow {
+  id: string;
+  document_id: string;
+  question: string;
+  /** Optional nudge shown on request before the answer is revealed. */
+  hint: string | null;
+  answer: string;
+  created_at: number;
+  updated_at: number;
+}
+
 export interface MessageRow {
   id: string;
   chat_id: string;
@@ -103,6 +114,18 @@ function createDb(): Database.Database {
       key   TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    -- Study flashcards, scoped to one document.
+    CREATE TABLE IF NOT EXISTS flashcards (
+      id          TEXT PRIMARY KEY,
+      document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+      question    TEXT NOT NULL,
+      hint        TEXT,
+      answer      TEXT NOT NULL,
+      created_at  INTEGER NOT NULL,
+      updated_at  INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_flashcards_document ON flashcards(document_id);
 
     -- Resolved PDF outline (table of contents), cached so it's instant on reopen.
     -- Stored PDFs never change, so an entry stays valid until its format version bumps.
@@ -194,6 +217,59 @@ export function saveOutline(documentId: string, version: number, data: string): 
     `INSERT INTO outlines (document_id, version, data) VALUES (?, ?, ?)
      ON CONFLICT(document_id) DO UPDATE SET version = excluded.version, data = excluded.data`,
   ).run(documentId, version, data);
+}
+
+// ---------------------------------------------------------------------------
+// Flashcard queries
+// ---------------------------------------------------------------------------
+
+export function listFlashcards(documentId: string): FlashcardRow[] {
+  return db
+    .prepare("SELECT * FROM flashcards WHERE document_id = ? ORDER BY created_at ASC")
+    .all(documentId) as FlashcardRow[];
+}
+
+export function getFlashcard(id: string): FlashcardRow | undefined {
+  return db.prepare("SELECT * FROM flashcards WHERE id = ?").get(id) as FlashcardRow | undefined;
+}
+
+export function insertFlashcard(card: {
+  id: string;
+  document_id: string;
+  question: string;
+  hint: string | null;
+  answer: string;
+}): FlashcardRow {
+  const now = Date.now();
+  db.prepare(
+    `INSERT INTO flashcards (id, document_id, question, hint, answer, created_at, updated_at)
+     VALUES (@id, @document_id, @question, @hint, @answer, @now, @now)`,
+  ).run({ ...card, now });
+  return getFlashcard(card.id)!;
+}
+
+export function updateFlashcard(
+  id: string,
+  fields: { question?: string; hint?: string | null; answer?: string },
+): FlashcardRow | undefined {
+  const current = getFlashcard(id);
+  if (!current) return undefined;
+  db.prepare(
+    `UPDATE flashcards
+        SET question = @question, hint = @hint, answer = @answer, updated_at = @now
+      WHERE id = @id`,
+  ).run({
+    id,
+    question: fields.question ?? current.question,
+    hint: fields.hint !== undefined ? fields.hint : current.hint,
+    answer: fields.answer ?? current.answer,
+    now: Date.now(),
+  });
+  return getFlashcard(id);
+}
+
+export function deleteFlashcard(id: string): void {
+  db.prepare("DELETE FROM flashcards WHERE id = ?").run(id);
 }
 
 // ---------------------------------------------------------------------------
