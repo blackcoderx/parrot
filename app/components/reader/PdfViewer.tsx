@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -10,6 +10,8 @@ import { NotePenLayer } from "./NotePenLayer";
 import type { Highlight, NormRect } from "./types";
 import type { PdfDocument } from "./outline";
 import styles from "./Reader.module.css";
+
+type Size = { w: number; h: number };
 
 // Serve the worker from /public (copied from pdfjs-dist) — reliable across bundlers.
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
@@ -51,14 +53,60 @@ export function PdfViewer({
   onNoteRegion,
 }: Props) {
   const [numPages, setNumPages] = useState(0);
+  // Page size at scale 1 (CSS px). Page 1's size stands in for pages that haven't loaded
+  // yet; each page's real size replaces it once that page is rendered.
+  const [baseSize, setBaseSize] = useState<Size | null>(null);
+  const [sizes, setSizes] = useState<Record<number, Size>>({});
+  // Only pages near the viewport render a canvas + text layer; the rest are sized
+  // placeholders. Rendering every page at once froze the tab on long books and kept the
+  // pdf.js worker too busy to answer anything else (like outline lookups).
+  const [nearPages, setNearPages] = useState<ReadonlySet<number>>(() => new Set());
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const didRestore = useRef(false);
 
   const file = `/api/files/${documentId}`;
 
+  // Mount pages within ~1.5 screens of the viewport; unmount (freeing canvases) beyond that.
+  useEffect(() => {
+    if (!numPages || !baseSize) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        setNearPages((prev) => {
+          const next = new Set(prev);
+          for (const e of entries) {
+            const page = Number((e.target as HTMLElement).dataset.page);
+            if (e.isIntersecting) next.add(page);
+            else next.delete(page);
+          }
+          return next;
+        });
+      },
+      { rootMargin: "150% 0px" },
+    );
+    pageRefs.current.forEach((el) => el && observer.observe(el));
+    return () => observer.disconnect();
+  }, [numPages, baseSize]);
+
+  // Restore scroll to the last-read page as soon as the placeholders are laid out, then
+  // mount the pages around it straight away rather than waiting a frame for the observer.
+  useLayoutEffect(() => {
+    if (!baseSize) return;
+    if (initialPage > 1) pageRefs.current[initialPage - 1]?.scrollIntoView({ block: "start" });
+    const margin = window.innerHeight * 1.5;
+    const near = new Set<number>();
+    pageRefs.current.forEach((el, i) => {
+      const r = el?.getBoundingClientRect();
+      if (r && r.bottom >= -margin && r.top <= window.innerHeight + margin) near.add(i + 1);
+    });
+    // Measured from layout, so it must run here (before paint), not in render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNearPages(near);
+    // Only on first layout — later scrolling belongs to the reader and the observer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseSize]);
+
   // Track the most-visible page and report it upward.
   useEffect(() => {
-    if (!numPages) return;
+    if (!numPages || !baseSize) return;
     const observer = new IntersectionObserver(
       (entries) => {
         const visible = entries
@@ -73,7 +121,7 @@ export function PdfViewer({
     );
     pageRefs.current.forEach((el) => el && observer.observe(el));
     return () => observer.disconnect();
-  }, [numPages, onPageChange]);
+  }, [numPages, baseSize, onPageChange]);
 
   // Jump to a requested page (from the toolbar), reusing the same scroll as restore.
   useEffect(() => {
@@ -94,16 +142,21 @@ export function PdfViewer({
     setNumPages(pdf.numPages);
     onNumPages(pdf.numPages);
     onDocument(pdf);
+    pdf
+      .getPage(1)
+      .then((page) => {
+        const { width, height } = page.getViewport({ scale: 1 });
+        setBaseSize({ w: width, h: height });
+      })
+      .catch(() => setBaseSize({ w: 612, h: 792 })); // US Letter, if page 1 won't load
   }
 
-  // Restore scroll to the last-read page once pages exist.
-  function handlePageRender() {
-    if (didRestore.current || !numPages || initialPage <= 1) return;
-    const target = pageRefs.current[initialPage - 1];
-    if (target) {
-      didRestore.current = true;
-      target.scrollIntoView({ block: "start" });
-    }
+  function handlePageLoad(pageNumber: number, w: number, h: number) {
+    setSizes((prev) =>
+      prev[pageNumber]?.w === w && prev[pageNumber]?.h === h
+        ? prev
+        : { ...prev, [pageNumber]: { w, h } },
+    );
   }
 
   return (
@@ -124,34 +177,44 @@ export function PdfViewer({
       // "noopener noreferrer nofollow").
       externalLinkTarget="_blank"
     >
-      {Array.from({ length: numPages }, (_, i) => {
-        const pageNumber = i + 1;
-        return (
-          <div
-            key={pageNumber}
-            data-page={pageNumber}
-            ref={(el) => {
-              pageRefs.current[i] = el;
-            }}
-            className={styles.pageWrap}
-          >
-            <Page
-              pageNumber={pageNumber}
-              scale={scale}
-              renderTextLayer
-              onRenderSuccess={handlePageRender}
-            />
-            <HighlightLayer
-              highlights={highlights.filter((h) => h.page === pageNumber)}
-              onDelete={onDeleteHighlight}
-              onOpen={onOpenHighlight}
-              onOpenNote={onOpenNote}
-            />
-            {aiMode && <AiPenLayer pageNumber={pageNumber} onRegion={onRegion} />}
-            {noteMode && <NotePenLayer pageNumber={pageNumber} onRegion={onNoteRegion} />}
-          </div>
-        );
-      })}
+      {baseSize &&
+        Array.from({ length: numPages }, (_, i) => {
+          const pageNumber = i + 1;
+          const size = sizes[pageNumber] ?? baseSize;
+          return (
+            <div
+              key={pageNumber}
+              data-page={pageNumber}
+              ref={(el) => {
+                pageRefs.current[i] = el;
+              }}
+              className={styles.pageWrap}
+              style={{ width: size.w * scale, height: size.h * scale }}
+            >
+              {nearPages.has(pageNumber) && (
+                <>
+                  <Page
+                    pageNumber={pageNumber}
+                    scale={scale}
+                    renderTextLayer
+                    loading=""
+                    onLoadSuccess={(page) =>
+                      handlePageLoad(pageNumber, page.originalWidth, page.originalHeight)
+                    }
+                  />
+                  <HighlightLayer
+                    highlights={highlights.filter((h) => h.page === pageNumber)}
+                    onDelete={onDeleteHighlight}
+                    onOpen={onOpenHighlight}
+                    onOpenNote={onOpenNote}
+                  />
+                  {aiMode && <AiPenLayer pageNumber={pageNumber} onRegion={onRegion} />}
+                  {noteMode && <NotePenLayer pageNumber={pageNumber} onRegion={onNoteRegion} />}
+                </>
+              )}
+            </div>
+          );
+        })}
     </Document>
   );
 }

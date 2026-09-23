@@ -8,7 +8,7 @@ import { SelectionMenu } from "./SelectionMenu";
 import { AskParrot, type AskAnchor } from "./AskParrot";
 import { NoteEditor, type NoteAnchor } from "./NoteEditor";
 import { OutlinePanel } from "./OutlinePanel";
-import { loadOutline, type OutlineNode, type PdfDocument } from "./outline";
+import { headingY, loadOutline, type OutlineNode, type PdfDocument } from "./outline";
 import { readSelection, type SelectionInfo } from "./selection";
 import { HIGHLIGHT_COLORS, type Highlight, type NormRect } from "./types";
 import styles from "./Reader.module.css";
@@ -56,6 +56,8 @@ export function Reader({ documentId, title, initialPage }: Props) {
   );
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [outline, setOutline] = useState<OutlineNode[] | null>(null);
+  const cachedOutline = useRef<Promise<OutlineNode[] | null> | null>(null);
+  const pdfRef = useRef<PdfDocument | null>(null);
   const pageRef = useRef(initialPage);
   const patchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -79,22 +81,43 @@ export function Reader({ documentId, title, initialPage }: Props) {
     });
   }
 
-  // Once the PDF loads: restore whether the contents sidebar was open (a per-browser
-  // convenience, read client-side only to keep hydration clean) and read its outline.
-  const handleDocument = useCallback((pdf: PdfDocument) => {
-    try {
-      if (localStorage.getItem(OUTLINE_KEY) === "1") setOutlineOpen(true);
-    } catch {}
-    setOutline(null);
-    loadOutline(pdf)
-      .then(setOutline)
-      .catch(() => setOutline([]));
-  }, []);
+  // The outline is cached server-side after the first open; start fetching it right away
+  // so the sidebar can fill before the PDF has even finished loading.
+  useEffect(() => {
+    const cached = fetch(`/api/documents/${documentId}/outline`)
+      .then((r) => (r.ok ? (r.json() as Promise<OutlineNode[] | null>) : null))
+      .catch(() => null);
+    cachedOutline.current = cached;
+    cached.then((nodes) => nodes && setOutline(nodes));
+  }, [documentId]);
 
-  function handleOutlineSelect(node: OutlineNode) {
+  // Once the PDF loads: restore whether the contents sidebar was open (a per-browser
+  // convenience, read client-side only to keep hydration clean) and, if the outline
+  // wasn't cached, read it from the PDF and cache it.
+  const handleDocument = useCallback(
+    async (pdf: PdfDocument) => {
+      pdfRef.current = pdf;
+      try {
+        if (localStorage.getItem(OUTLINE_KEY) === "1") setOutlineOpen(true);
+      } catch {}
+      if (await cachedOutline.current) return;
+      const nodes = await loadOutline(pdf).catch(() => [] as OutlineNode[]);
+      setOutline(nodes);
+      fetch(`/api/documents/${documentId}/outline`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(nodes),
+      }).catch(() => {});
+    },
+    [documentId],
+  );
+
+  async function handleOutlineSelect(node: OutlineNode) {
     if (node.page === null) return;
-    setCurrentPage(node.page);
-    setJump((j) => ({ page: node.page!, y: node.y, nonce: (j?.nonce ?? 0) + 1 }));
+    const page = node.page;
+    setCurrentPage(page);
+    const y = pdfRef.current ? await headingY(pdfRef.current, node) : null;
+    setJump((j) => ({ page, y, nonce: (j?.nonce ?? 0) + 1 }));
   }
 
   // Detect text selections inside the viewer (ignored while a pen tool is active).

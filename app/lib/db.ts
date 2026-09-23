@@ -103,6 +103,14 @@ function createDb(): Database.Database {
       key   TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    -- Resolved PDF outline (table of contents), cached so it's instant on reopen.
+    -- Stored PDFs never change, so an entry stays valid until its format version bumps.
+    CREATE TABLE IF NOT EXISTS outlines (
+      document_id TEXT PRIMARY KEY REFERENCES documents(id) ON DELETE CASCADE,
+      version     INTEGER NOT NULL,
+      data        TEXT NOT NULL
+    );
   `);
 
   // Migrate databases created before the `note` column existed (CREATE TABLE
@@ -167,6 +175,25 @@ export function touchDocument(
 
 export function deleteDocument(id: string): void {
   db.prepare("DELETE FROM documents WHERE id = ?").run(id);
+}
+
+// ---------------------------------------------------------------------------
+// Outline cache
+// ---------------------------------------------------------------------------
+
+/** The cached outline JSON for a document, or null if absent or from another format version. */
+export function getOutline(documentId: string, version: number): string | null {
+  const row = db
+    .prepare("SELECT data FROM outlines WHERE document_id = ? AND version = ?")
+    .get(documentId, version) as { data: string } | undefined;
+  return row?.data ?? null;
+}
+
+export function saveOutline(documentId: string, version: number, data: string): void {
+  db.prepare(
+    `INSERT INTO outlines (document_id, version, data) VALUES (?, ?, ?)
+     ON CONFLICT(document_id) DO UPDATE SET version = excluded.version, data = excluded.data`,
+  ).run(documentId, version, data);
 }
 
 // ---------------------------------------------------------------------------
