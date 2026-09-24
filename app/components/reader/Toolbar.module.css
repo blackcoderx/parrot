@@ -1,0 +1,146 @@
+/* Bottom toolbar (reference: figma dark pill) */
+.toolbar {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  white-space: nowrap;
+  background: var(--black);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(2, 1, 0, 0.3);
+}
+
+.toolBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--porcelain);
+  font-size: 18px;
+  line-height: 1;
+  transition: background 0.12s ease;
+}
+
+.toolBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.toolBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.zoom {
+  min-width: 44px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--porcelain);
+  font-variant-numeric: tabular-nums;
+}
+
+.divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.pageInput {
+  /* content-box so the ch-based width (set inline from the digit count) is the
+     room for the digits themselves, not eaten by padding/border. */
+  box-sizing: content-box;
+  min-width: 1ch;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--porcelain);
+  font-size: 12px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.pageInput:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.pageTotal {
+  font-size: 12px;
+  color: var(--porcelain);
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+.penSwatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+}
+
+/* Color picker popup */
+.colorPopup {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background: var(--black);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(2, 1, 0, 0.28);
+}
+
+.colorDot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.colorDot[data-active] {
+  border-color: var(--porcelain);
+}
+
+.toolBtn[data-active] {
+  background: var(--accent);
+  color: var(--porcelain);
+}
+
+/* AI pen — faint accent hover + a little life on the icon */
+.penBtn {
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.penBtn svg {
+  transition: transform 0.15s ease;
+}
+
+.penBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: color-mix(in srgb, var(--accent) 55%, var(--porcelain));
+}
+
+.penBtn:hover:not(:disabled) svg {
+  transform: rotate(-8deg) scale(1.06);
+}
+
+.penBtn:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+/* Keep the solid accent look while the pen mode is on, even on hover. */
+.penBtn[data-active]:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--porcelain);
+}

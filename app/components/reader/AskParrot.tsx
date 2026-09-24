@@ -7,7 +7,8 @@ import { getJson, sendJson } from "@/components/api";
 import type { NormRect } from "./types";
 import Markdown from "./Markdown";
 import { useFloatingWindow } from "./useFloatingWindow";
-import styles from "./Reader.module.css";
+import buttons from "./buttons.module.css";
+import styles from "./AskParrot.module.css";
 
 /** What the thread anchors to when saved. */
 export type AskAnchor =
@@ -221,7 +222,7 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
     >
       <div className={styles.askHeader} {...headerProps}>
         <span className={styles.askTitle}>Ask Parrot</span>
-        <button className={styles.askClose} onClick={onClose} aria-label="Close" title="Close (Esc)">
+        <button className={buttons.askClose} onClick={onClose} aria-label="Close" title="Close (Esc)">
           ×
         </button>
       </div>
@@ -278,10 +279,10 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
             if (e.key === "Enter" && !e.metaKey && !e.ctrlKey) submit();
           }}
         />
-        <button className={styles.askSend} onClick={submit} disabled={busy}>
+        <button className={buttons.askSend} onClick={submit} disabled={busy}>
           {busy ? "…" : "Send"}
         </button>
-        <button className={styles.askSave} onClick={save} disabled={!canSave} title="Save (Ctrl+Enter)">
+        <button className={buttons.askSave} onClick={save} disabled={!canSave} title="Save (Ctrl+Enter)">
           {saved ? "Saved" : "Save"}
         </button>
       </div>

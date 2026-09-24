@@ -5,7 +5,8 @@ import { sendJson } from "@/components/api";
 import { NOTE_COLOR, type Highlight, type NormRect } from "./types";
 import { NoteIcon } from "./NoteIcon";
 import { useFloatingWindow } from "./useFloatingWindow";
-import styles from "./Reader.module.css";
+import buttons from "./buttons.module.css";
+import styles from "./NoteEditor.module.css";
 
 /** What a note anchors to. */
 export type NoteAnchor =
@@ -72,7 +73,7 @@ export function NoteEditor({ documentId, anchorRect, anchor, onClose, onSaved }:
           <NoteIcon size={15} />
           <span className={styles.noteTitle}>Note</span>
         </span>
-        <button className={styles.askClose} onClick={onClose} aria-label="Close">
+        <button className={buttons.askClose} onClick={onClose} aria-label="Close">
           ×
         </button>
       </div>
@@ -97,7 +98,7 @@ export function NoteEditor({ documentId, anchorRect, anchor, onClose, onSaved }:
             Delete
           </button>
         )}
-        <button className={styles.askSave} onClick={save} disabled={!text.trim() || saving}>
+        <button className={buttons.askSave} onClick={save} disabled={!text.trim() || saving}>
           {saving ? "…" : "Save"}
         </button>
       </div>

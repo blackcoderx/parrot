@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { activeOutlineId, ancestorIds, type OutlineNode } from "./outline";
-import styles from "./Reader.module.css";
+import styles from "./OutlinePanel.module.css";
 
 interface Props {
   /** null while the outline is still loading. */

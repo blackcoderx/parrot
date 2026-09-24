@@ -1,0 +1,39 @@
+/* Shared window buttons (close / primary / secondary), used by Ask Parrot, the note editor and flashcards. */
+
+.askClose {
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--muted);
+}
+
+.askClose:hover {
+  color: var(--foreground);
+}
+
+.askSend,
+.askSave {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.askSend {
+  background: var(--accent);
+  color: var(--porcelain);
+}
+
+.askSave {
+  background: var(--surface);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+}
+
+.askSend:disabled,
+.askSave:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

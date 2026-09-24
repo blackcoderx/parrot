@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { Popover } from "@base-ui-components/react/popover";
 import { getJson, sendJson } from "@/components/api";
 import type { Flashcard } from "./types";
-import styles from "./Reader.module.css";
+import buttons from "./buttons.module.css";
+import styles from "./Flashcards.module.css";
 
 /** What the flashcards popover is showing. */
 export type FlashView = { kind: "review" } | { kind: "form"; editing: Flashcard | null };
@@ -127,7 +128,7 @@ export function Flashcards({
                     <PlusIcon />
                   </button>
                 )}
-                <Popover.Close className={styles.askClose} aria-label="Close flashcards">
+                <Popover.Close className={buttons.askClose} aria-label="Close flashcards">
                   ×
                 </Popover.Close>
               </span>
@@ -147,7 +148,7 @@ export function Flashcards({
               <div className={styles.flashEmpty}>
                 <p>No flashcards yet for this document.</p>
                 <button
-                  className={styles.askSend}
+                  className={buttons.askSend}
                   onClick={() => onViewChange({ kind: "form", editing: null })}
                 >
                   Create a card
@@ -344,10 +345,10 @@ function CardForm({
       </label>
       <div className={styles.flashFormActions}>
         {error && <span className={styles.flashError}>{error}</span>}
-        <button className={styles.askSave} onClick={onCancel}>
+        <button className={buttons.askSave} onClick={onCancel}>
           Cancel
         </button>
-        <button className={styles.askSend} onClick={save} disabled={!canSave}>
+        <button className={buttons.askSend} onClick={save} disabled={!canSave}>
           {saving ? "Saving…" : "Save card"}
         </button>
       </div>

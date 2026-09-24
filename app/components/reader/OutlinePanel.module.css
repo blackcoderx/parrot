@@ -1,0 +1,167 @@
+/* Contents (outline) sidebar — floats over the pages, below the header. */
+.outline {
+  position: fixed;
+  top: var(--reader-header-h);
+  bottom: 0;
+  left: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  width: var(--outline-w);
+  max-width: 85vw;
+  background: var(--background);
+  border-right: 1px solid var(--border);
+  box-shadow: 8px 0 30px rgba(2, 1, 0, 0.12);
+  animation: outlineIn 0.2s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+@keyframes outlineIn {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .outline {
+    animation: none;
+  }
+}
+
+.outlineHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 12px 8px 16px;
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.outlineClose {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.outlineClose:hover {
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+.outlineBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 8px 96px;
+  /* Scrollable, but hide the scrollbar. */
+  scrollbar-width: none;
+}
+
+.outlineBody::-webkit-scrollbar {
+  display: none;
+}
+
+.outlineEmpty {
+  padding: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.outlineList {
+  list-style: none;
+}
+
+.outlineRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  color: var(--muted);
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.outlineRow:hover {
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+.outlineRow[data-active] {
+  color: var(--accent);
+  font-weight: 550;
+}
+
+.outlineRow[data-active]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+.outlineChevron,
+.outlineChevronSpacer {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+
+.outlineChevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+}
+
+.outlineChevron svg {
+  transition: transform 0.15s ease;
+}
+
+.outlineChevron[data-open] svg {
+  transform: rotate(90deg);
+}
+
+.outlineItem {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 8px 6px 4px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+}
+
+.outlineItem:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.outlineTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.outlinePage {
+  flex-shrink: 0;
+  font-size: 11px;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}

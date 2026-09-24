@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Popover } from "@base-ui-components/react/popover";
 import { HIGHLIGHT_COLORS } from "./types";
 import { NoteIcon } from "./NoteIcon";
-import styles from "./Reader.module.css";
+import styles from "./Toolbar.module.css";
 
 interface Props {
   toolbarRef: React.Ref<HTMLDivElement>;
