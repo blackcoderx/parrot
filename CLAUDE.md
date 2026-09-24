@@ -40,11 +40,15 @@ never in the repo:
 
 `app/lib/paths.ts` resolves those paths; `app/lib/db.ts` opens the better-sqlite3 singleton and
 runs `CREATE TABLE IF NOT EXISTS` migrations on import (tables: `documents`, `highlights`, `chats`,
-`messages`, `settings`).
+`messages`, `settings`, `flashcards`, `outlines`).
 
 **Server boundary.** Everything in `app/lib/*` starts with `import "server-only"` and may only be
-imported from Route Handlers under `app/app/api/**`, never from client components. `better-sqlite3`
-is declared in `serverExternalPackages` (`app/next.config.ts`) so it isn't bundled.
+imported from server code — Route Handlers under `app/app/api/**` and server components such as
+`app/app/page.tsx` (renders the library list; `force-dynamic`) and `app/app/read/[id]/page.tsx` —
+never from client components. `better-sqlite3` is declared in `serverExternalPackages`
+(`app/next.config.ts`) so it isn't bundled. Data shapes shared by both sides live in the type-only
+`app/types.ts` (`@/types`). Route Handlers read bodies with `readJson` (`app/lib/http.ts`, 400 on
+malformed JSON); client components call the API through `getJson`/`sendJson` (`app/components/api.ts`).
 
 **Highlights are zoom-independent.** They store page-normalized rects (0..1) and are rendered as
 percentages over each page, so they stay aligned at any zoom. `listHighlights` LEFT JOINs `chats`
@@ -54,23 +58,28 @@ so each highlight carries a `chat_id` (chat-anchored highlights reopen their thr
 load, which crashes SSR — so `PdfViewer` is loaded via `next/dynamic(..., { ssr: false })` from
 `Reader.tsx`. The pdf.js worker is vendored at `public/pdf.worker.min.mjs` (ESLint-ignored) and set
 as `pdfjs.GlobalWorkerOptions.workerSrc`. `Reader.tsx` orchestrates the page overlays
-(`HighlightLayer`, `AiPenLayer`), the text-selection `SelectionMenu` (Copy / Highlight / Ask Parrot),
-and the `AskParrot` window.
+(`HighlightLayer`, `AiPenLayer`, `NotePenLayer` — the pens share `useDragBox`), the text-selection
+`SelectionMenu` (Copy / Highlight / Ask Parrot / Note), and the `AskParrot` / `NoteEditor` windows.
+`PdfViewer` and `HighlightLayer` are memoized, so keep the callbacks `Reader` passes them stable
+(`useCallback`) or every scroll re-renders every page.
 
-**AI harness (Vercel AI SDK, `ai@7`).** `app/lib/providers.ts` is a registry of 8 providers backed
-by just 3 SDK packages (`@ai-sdk/anthropic`, `@ai-sdk/openai`, and `@ai-sdk/openai-compatible` for
-xAI/Groq/OpenRouter/Ollama/LM Studio/custom). **API keys come from env vars or `~/.parrot/config.json`,
+**AI harness (Vercel AI SDK, `ai@7`).** `app/lib/providers.ts` is a registry of 9 providers backed
+by 4 SDK packages (`@ai-sdk/anthropic`, `@ai-sdk/openai`, `@ai-sdk/google`, and
+`@ai-sdk/openai-compatible` for xAI/Groq/OpenRouter/Ollama/LM Studio/custom). **API keys come from env vars or `~/.parrot/config.json`,
 never the DB**; the `settings` table (`app/lib/settings.ts`) holds only non-secret prefs (active
 provider, model, base URLs). `/api/chat` streams with `streamText(...).toUIMessageStreamResponse()`
 — note `convertToModelMessages()` is **async** in `ai@7`, so `await` it. `AskParrot` sends the
 selected text (or an AI-pen region cropped from the page `<canvas>` to a PNG data URL) as context and
-renders replies as Markdown + LaTeX (`react-markdown` + `remark-math`/`rehype-katex`). It is a
-top-layer floating window (Popover API `popover="manual"`), `position: fixed`, draggable by its
-header, resizable, and viewport-clamped so it can't scroll off-screen.
+renders replies as Markdown + LaTeX (`react-markdown` + `remark-math`/`rehype-katex`). It and
+`NoteEditor` are top-layer floating windows (Popover API `popover="manual"`), `position: fixed`,
+draggable by the header, resizable, and viewport-clamped — all via the shared `useFloatingWindow`
+hook. Saving a thread (`saveThread` in `db.ts`) writes the anchor highlight, chat and messages in one
+transaction.
 
-**Styling.** Base UI headless primitives styled with **plain CSS Modules — no Tailwind.** Brand
-tokens live in `app/app/globals.css`; use `var(--accent)` for the accent (currently the user's
-`--blue` override `#71F79F`, mint green).
+**Styling.** Base UI headless primitives styled with **plain CSS Modules — no Tailwind.** Each
+reader component has its own `*.module.css`; page-level overlays share `Reader.module.css`, and the
+window buttons used by Ask Parrot / notes / flashcards live in `buttons.module.css`. Brand tokens
+live in `app/app/globals.css`; use `var(--accent)` for the accent (currently `--blue`, `#4c21e8`).
 
 ## Conventions
 
