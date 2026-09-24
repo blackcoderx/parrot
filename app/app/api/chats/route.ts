@@ -1,13 +1,5 @@
 import { NextRequest } from "next/server";
-import { randomUUID } from "node:crypto";
-import {
-  insertHighlight,
-  insertChat,
-  getChatByHighlight,
-  listMessages,
-  replaceMessages,
-  type NormRect,
-} from "@/lib/db";
+import { getChatByHighlight, listMessages, saveThread, type NormRect } from "@/lib/db";
 
 interface SaveBody {
   documentId: string;
@@ -24,33 +16,21 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "documentId and messages are required" }, { status: 400 });
   }
 
-  // Resolve (or create) the anchor highlight.
-  let highlightId = body.highlightId;
-  if (!highlightId) {
-    if (!body.highlight) {
-      return Response.json({ error: "highlight or highlightId is required" }, { status: 400 });
-    }
-    const created = insertHighlight({
-      id: randomUUID(),
-      document_id: body.documentId,
-      page: body.highlight.page,
-      rects: body.highlight.rects,
-      color: body.highlight.color,
-      text: body.highlight.text,
-    });
-    highlightId = created.id;
+  if (!body.highlightId && !body.highlight) {
+    return Response.json({ error: "highlight or highlightId is required" }, { status: 400 });
   }
 
-  // Resolve (or create) the chat, then replace its messages.
-  let chat = getChatByHighlight(highlightId);
-  if (!chat) {
-    const id = randomUUID();
-    insertChat({ id, document_id: body.documentId, highlight_id: highlightId });
-    chat = { id };
-  }
-  replaceMessages(chat.id, body.messages);
+  // Resolve (or create) the anchor highlight and chat, then replace the messages — in one
+  // transaction.
+  const h = body.highlight;
+  const saved = saveThread({
+    documentId: body.documentId,
+    highlightId: body.highlightId,
+    highlight: h && { page: h.page, rects: h.rects, color: h.color, text: h.text },
+    messages: body.messages,
+  });
 
-  return Response.json({ highlightId, chatId: chat.id }, { status: 201 });
+  return Response.json(saved, { status: 201 });
 }
 
 // GET /api/chats?highlightId=... — the saved thread for a highlight.

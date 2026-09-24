@@ -361,6 +361,39 @@ export function listMessages(chatId: string): MessageRow[] {
     .all(chatId) as MessageRow[];
 }
 
+/**
+ * Save (upsert) a thread atomically: create its anchor highlight if it doesn't have one
+ * yet, create the chat if needed, then replace its messages. All or nothing, so a failure
+ * part-way can't leave an orphan highlight behind.
+ */
+export function saveThread(input: {
+  documentId: string;
+  highlightId?: string;
+  highlight?: { page: number; rects: NormRect[]; color: string; text: string };
+  messages: { role: string; content: string; image?: string | null }[];
+}): { highlightId: string; chatId: string } {
+  return db.transaction(() => {
+    let highlightId = input.highlightId;
+    if (!highlightId) {
+      if (!input.highlight) throw new Error("highlight or highlightId is required");
+      highlightId = insertHighlight({
+        id: randomUUID(),
+        document_id: input.documentId,
+        ...input.highlight,
+      }).id;
+    }
+
+    let chatId = getChatByHighlight(highlightId)?.id;
+    if (!chatId) {
+      chatId = randomUUID();
+      insertChat({ id: chatId, document_id: input.documentId, highlight_id: highlightId });
+    }
+    replaceMessages(chatId, input.messages);
+
+    return { highlightId, chatId };
+  })();
+}
+
 /** Replace all messages on a chat (used when saving/updating a thread). */
 export function replaceMessages(
   chatId: string,
