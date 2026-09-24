@@ -105,7 +105,8 @@ export function Reader({ documentId, title, initialPage }: Props) {
   //   Shift+F   new flashcard
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      const target = e.target as HTMLElement | null;
+      // The target isn't always an Element (e.g. a key event dispatched on `document`).
+      const target = e.target instanceof Element ? e.target : null;
       if (target?.closest("input, textarea, [contenteditable]:not([contenteditable='false'])")) return;
       const key = e.key.toLowerCase();
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && key === "b") {
