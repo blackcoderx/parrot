@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import type { NormRect } from "./types";
 import Markdown from "./Markdown";
+import { useFloatingWindow } from "./useFloatingWindow";
 import styles from "./Reader.module.css";
 
 /** What the thread anchors to when saved. */
@@ -23,28 +24,12 @@ interface Props {
   onSaved: () => void;
 }
 
-interface Pos {
-  left: number;
-  top: number;
-}
-
 /** Extract plain text from a UIMessage's parts. */
 function textOf(m: UIMessage): string {
   return m.parts
     .filter((p) => p.type === "text")
     .map((p) => (p as { text: string }).text)
     .join("");
-}
-
-/** Keep the whole window inside the viewport (so the header/close stays reachable). */
-function clampPos(left: number, top: number, w: number, h: number): Pos {
-  const m = 8;
-  const maxLeft = Math.max(m, window.innerWidth - w - m);
-  const maxTop = Math.max(m, window.innerHeight - h - m);
-  return {
-    left: Math.min(Math.max(left, m), maxLeft),
-    top: Math.min(Math.max(top, m), maxTop),
-  };
 }
 
 // Claude-Code-style cycling words shown in the "thinking" pill.
@@ -85,11 +70,9 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
   const [savedHighlightId, setSavedHighlightId] = useState<string | null>(
     anchor.kind === "existing" ? anchor.highlightId : null,
   );
-  const [pos, setPos] = useState<Pos | null>(null);
+  const { panelRef, style, headerProps } = useFloatingWindow(anchorRect, onClose);
   const imageSent = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ dx: number; dy: number } | null>(null);
   // Holds the latest save action for the window-level Ctrl/Cmd+Enter shortcut,
   // so the keydown listener can stay stable without a stale closure.
   const saveRef = useRef<() => void>(() => {});
@@ -103,51 +86,17 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
     }),
   });
 
-  // Render into the top layer, then place the window near the anchor (clamped).
-  useLayoutEffect(() => {
-    const el = panelRef.current;
-    if (!el) return;
-    try {
-      if (!el.matches(":popover-open")) el.showPopover();
-    } catch {
-      // showPopover unsupported or already open — positioning still works.
-    }
-    const w = el.offsetWidth;
-    const h = el.offsetHeight;
-    const left = anchorRect ? anchorRect.left : (window.innerWidth - w) / 2;
-    const top = anchorRect ? anchorRect.bottom + 8 : (window.innerHeight - h) / 2;
-    setPos(clampPos(left, top, w, h));
-    return () => {
-      try {
-        el.hidePopover();
-      } catch {
-        // no-op
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Escape closes, Ctrl/Cmd+Enter saves; re-clamp if the window is resized.
+  // Ctrl/Cmd+Enter saves (Escape/resize/drag are handled by useFloatingWindow).
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-      else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         saveRef.current();
       }
     }
-    function onResize() {
-      const el = panelRef.current;
-      if (!el) return;
-      setPos((prev) => (prev ? clampPos(prev.left, prev.top, el.offsetWidth, el.offsetHeight) : prev));
-    }
     window.addEventListener("keydown", onKey);
-    window.addEventListener("resize", onResize);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("resize", onResize);
-    };
-  }, [onClose]);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // Reopen: seed the saved thread.
   useEffect(() => {
@@ -174,34 +123,6 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages]);
-
-  // ---- Drag the window by its header (writes position straight to the DOM) ----
-  function onHeaderPointerDown(e: React.PointerEvent) {
-    if ((e.target as HTMLElement).closest("button")) return; // let the close button work
-    const el = panelRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    drag.current = { dx: e.clientX - rect.left, dy: e.clientY - rect.top };
-    e.currentTarget.setPointerCapture(e.pointerId);
-    document.body.style.userSelect = "none";
-    document.body.style.cursor = 'url("/closedhand.svg") 16 16, grabbing';
-  }
-  function onHeaderPointerMove(e: React.PointerEvent) {
-    const el = panelRef.current;
-    if (!drag.current || !el) return;
-    const p = clampPos(e.clientX - drag.current.dx, e.clientY - drag.current.dy, el.offsetWidth, el.offsetHeight);
-    el.style.left = `${p.left}px`;
-    el.style.top = `${p.top}px`;
-  }
-  function onHeaderPointerUp(e: React.PointerEvent) {
-    const el = panelRef.current;
-    if (!drag.current || !el) return;
-    drag.current = null;
-    e.currentTarget.releasePointerCapture?.(e.pointerId);
-    document.body.style.userSelect = "";
-    document.body.style.cursor = "";
-    setPos({ left: parseFloat(el.style.left), top: parseFloat(el.style.top) });
-  }
 
   const busy = status === "submitted" || status === "streaming";
 
@@ -302,14 +223,9 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
       ref={panelRef}
       popover="manual"
       className={styles.askPanel}
-      style={{ left: pos?.left, top: pos?.top, visibility: pos ? undefined : "hidden" }}
+      style={style}
     >
-      <div
-        className={styles.askHeader}
-        onPointerDown={onHeaderPointerDown}
-        onPointerMove={onHeaderPointerMove}
-        onPointerUp={onHeaderPointerUp}
-      >
+      <div className={styles.askHeader} {...headerProps}>
         <span className={styles.askTitle}>Ask Parrot</span>
         <button className={styles.askClose} onClick={onClose} aria-label="Close" title="Close (Esc)">
           ×
