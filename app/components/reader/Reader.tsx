@@ -211,16 +211,22 @@ export function Reader({ documentId, title, initialPage }: Props) {
     setSelection(null); // hide the selection menu (keep the browser selection visible)
   }
 
+  // The handlers passed to PdfViewer are stable so the memoized viewer can skip
+  // re-rendering on unrelated Reader updates (e.g. the page indicator while scrolling).
+
   // Ask Parrot from an AI-pen region.
-  function handleRegion(page: number, rect: NormRect, image: string, anchorRect: DOMRect) {
-    setAiMode(false);
-    setAsk({ anchor: { kind: "region", page, rect, image }, anchorRect });
-  }
+  const handleRegion = useCallback(
+    (page: number, rect: NormRect, image: string, anchorRect: DOMRect) => {
+      setAiMode(false);
+      setAsk({ anchor: { kind: "region", page, rect, image }, anchorRect });
+    },
+    [],
+  );
 
   // Reopen a saved thread from its highlight.
-  function handleOpenHighlight(h: Highlight, anchorRect: DOMRect) {
+  const handleOpenHighlight = useCallback((h: Highlight, anchorRect: DOMRect) => {
     setAsk({ anchor: { kind: "existing", highlightId: h.id }, anchorRect });
-  }
+  }, []);
 
   // Add a note from a text selection.
   function handleNote() {
@@ -238,20 +244,33 @@ export function Reader({ documentId, title, initialPage }: Props) {
   }
 
   // Add a note from a note-pen region.
-  function handleNoteRegion(page: number, rect: NormRect, anchorRect: DOMRect) {
+  const handleNoteRegion = useCallback((page: number, rect: NormRect, anchorRect: DOMRect) => {
     setNoteMode(false);
     setNote({ anchor: { kind: "region", page, rect }, anchorRect });
-  }
+  }, []);
 
   // Open an existing note from its highlight.
-  function handleOpenNote(h: Highlight, anchorRect: DOMRect) {
+  const handleOpenNote = useCallback((h: Highlight, anchorRect: DOMRect) => {
     setNote({ anchor: { kind: "existing", highlight: h }, anchorRect });
-  }
+  }, []);
 
-  async function handleDeleteHighlight(id: string) {
+  const handleDeleteHighlight = useCallback(async (id: string) => {
     setHighlights((prev) => prev.filter((h) => h.id !== id));
     await fetch(`/api/highlights/${id}`, { method: "DELETE" });
-  }
+  }, []);
+
+  // The AI and note pens are mutually exclusive: turning one on turns the other off.
+  const toggleAi = useCallback(() => {
+    const next = !aiMode;
+    setAiMode(next);
+    if (next) setNoteMode(false);
+  }, [aiMode]);
+
+  const toggleNote = useCallback(() => {
+    const next = !noteMode;
+    setNoteMode(next);
+    if (next) setAiMode(false);
+  }, [noteMode]);
 
   // Persist reading progress (debounced) as the current page changes.
   const handlePageChange = useCallback(
@@ -388,19 +407,9 @@ export function Reader({ documentId, title, initialPage }: Props) {
         activeColor={activeColor}
         onColorChange={setActiveColor}
         aiMode={aiMode}
-        onToggleAi={() =>
-          setAiMode((v) => {
-            if (!v) setNoteMode(false);
-            return !v;
-          })
-        }
+        onToggleAi={toggleAi}
         noteMode={noteMode}
-        onToggleNote={() =>
-          setNoteMode((v) => {
-            if (!v) setAiMode(false);
-            return !v;
-          })
-        }
+        onToggleNote={toggleNote}
       />
     </div>
   );

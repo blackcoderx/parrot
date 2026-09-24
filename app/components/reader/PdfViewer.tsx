@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -15,6 +15,8 @@ type Size = { w: number; h: number };
 
 // Serve the worker from /public (copied from pdfjs-dist) — reliable across bundlers.
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+
+const NO_HIGHLIGHTS: Highlight[] = [];
 
 interface Props {
   documentId: string;
@@ -35,7 +37,7 @@ interface Props {
   onNoteRegion: (page: number, rect: NormRect, anchorRect: DOMRect) => void;
 }
 
-export function PdfViewer({
+export const PdfViewer = memo(function PdfViewer({
   documentId,
   scale,
   highlights,
@@ -64,6 +66,17 @@ export function PdfViewer({
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const file = `/api/files/${documentId}`;
+
+  // Group once per highlights change rather than filtering the full list for every page.
+  const byPage = useMemo(() => {
+    const map = new Map<number, Highlight[]>();
+    for (const h of highlights) {
+      const list = map.get(h.page);
+      if (list) list.push(h);
+      else map.set(h.page, [h]);
+    }
+    return map;
+  }, [highlights]);
 
   // Mount pages within ~1.5 screens of the viewport; unmount (freeing canvases) beyond that.
   useEffect(() => {
@@ -203,7 +216,7 @@ export function PdfViewer({
                     }
                   />
                   <HighlightLayer
-                    highlights={highlights.filter((h) => h.page === pageNumber)}
+                    highlights={byPage.get(pageNumber) ?? NO_HIGHLIGHTS}
                     onDelete={onDeleteHighlight}
                     onOpen={onOpenHighlight}
                     onOpenNote={onOpenNote}
@@ -217,7 +230,7 @@ export function PdfViewer({
         })}
     </Document>
   );
-}
+});
 
 function Loading() {
   return <div className={styles.status}>Loading document…</div>;

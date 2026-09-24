@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import type { Highlight } from "./types";
 import { NoteIcon } from "./NoteIcon";
 import styles from "./Reader.module.css";
@@ -17,7 +18,12 @@ interface Props {
  * A highlight is one of: a note (opens the note editor, rendered faint with a
  * corner icon), a saved chat (opens the thread), or plain (removed on click).
  */
-export function HighlightLayer({ highlights, onDelete, onOpen, onOpenNote }: Props) {
+export const HighlightLayer = memo(function HighlightLayer({
+  highlights,
+  onDelete,
+  onOpen,
+  onOpenNote,
+}: Props) {
   return (
     <div className={styles.highlightLayer}>
       {highlights.map((h) => {
@@ -65,4 +71,4 @@ export function HighlightLayer({ highlights, onDelete, onOpen, onOpenNote }: Pro
       })}
     </div>
   );
-}
+});
