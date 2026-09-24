@@ -1,4 +1,5 @@
 import { streamText, convertToModelMessages, stepCountIs, type UIMessage } from "ai";
+import { invalidJson, readJson } from "@/lib/http";
 import { getModel } from "@/lib/providers";
 import { getSearchTools } from "@/lib/search";
 import { getPrefs } from "@/lib/settings";
@@ -38,10 +39,12 @@ function buildSystem(context: ChatContext | undefined, canSearch: boolean): stri
 
 // POST /api/chat — stream an answer using the user's configured provider.
 export async function POST(request: Request) {
-  const { messages, context } = (await request.json()) as {
-    messages: UIMessage[];
-    context?: ChatContext;
-  };
+  const body = await readJson<{ messages: UIMessage[]; context: ChatContext }>(request);
+  if (!body) return invalidJson();
+  const { messages, context } = body;
+  if (!Array.isArray(messages)) {
+    return Response.json({ error: "messages is required" }, { status: 400 });
+  }
 
   const prefs = getPrefs();
 

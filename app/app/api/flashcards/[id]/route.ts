@@ -1,11 +1,12 @@
 import { NextRequest } from "next/server";
 import { deleteFlashcard, updateFlashcard } from "@/lib/db";
+import { readJson } from "@/lib/http";
 import { readCardFields } from "../fields";
 
 // PATCH /api/flashcards/[id] — edit a card ({ question?, hint?, answer? }).
 export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/flashcards/[id]">) {
   const { id } = await ctx.params;
-  const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+  const body = await readJson<Record<string, unknown>>(request);
 
   const fields = readCardFields(body, { partial: true });
   if ("error" in fields) return Response.json({ error: fields.error }, { status: 400 });

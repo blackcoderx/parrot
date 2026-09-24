@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { randomUUID } from "node:crypto";
 import { listHighlights, insertHighlight, type NormRect } from "@/lib/db";
+import { invalidJson, readJson } from "@/lib/http";
 
 // GET /api/highlights?documentId=... — all highlights for a document.
 export async function GET(request: NextRequest) {
@@ -13,14 +14,15 @@ export async function GET(request: NextRequest) {
 
 // POST /api/highlights — create a highlight from normalized rects.
 export async function POST(request: NextRequest) {
-  const body = (await request.json()) as {
-    documentId?: string;
-    page?: number;
-    rects?: NormRect[];
-    color?: string;
-    text?: string;
-    note?: string | null;
-  };
+  const body = await readJson<{
+    documentId: string;
+    page: number;
+    rects: NormRect[];
+    color: string;
+    text: string;
+    note: string | null;
+  }>(request);
+  if (!body) return invalidJson();
 
   if (!body.documentId || typeof body.page !== "number" || !body.rects?.length || !body.color) {
     return Response.json({ error: "Invalid highlight" }, { status: 400 });

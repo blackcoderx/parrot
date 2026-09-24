@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getChatByHighlight, listMessages, saveThread, type NormRect } from "@/lib/db";
+import { invalidJson, readJson } from "@/lib/http";
 
 interface SaveBody {
   documentId: string;
@@ -11,7 +12,8 @@ interface SaveBody {
 
 // POST /api/chats — save/upsert a thread, anchoring it to a highlight.
 export async function POST(request: NextRequest) {
-  const body = (await request.json()) as SaveBody;
+  const body = await readJson<SaveBody>(request);
+  if (!body) return invalidJson();
   if (!body.documentId || !body.messages?.length) {
     return Response.json({ error: "documentId and messages are required" }, { status: 400 });
   }

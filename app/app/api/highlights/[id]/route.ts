@@ -1,11 +1,12 @@
 import { NextRequest } from "next/server";
 import { deleteHighlight, updateHighlightNote } from "@/lib/db";
+import { readJson } from "@/lib/http";
 
 // PATCH /api/highlights/[id] — update the note text on a highlight.
 export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/highlights/[id]">) {
   const { id } = await ctx.params;
-  const body = (await request.json()) as { note?: string };
-  if (typeof body.note !== "string") {
+  const body = await readJson<{ note: string }>(request);
+  if (typeof body?.note !== "string") {
     return Response.json({ error: "note is required" }, { status: 400 });
   }
   if (!updateHighlightNote(id, body.note)) {

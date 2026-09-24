@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { randomUUID } from "node:crypto";
 import { getDocument, insertFlashcard, listFlashcards } from "@/lib/db";
+import { readJson } from "@/lib/http";
 import { readCardFields } from "./fields";
 
 // GET /api/flashcards?documentId=... — all flashcards for a document, oldest first.
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/flashcards — create a card ({ documentId, question, hint?, answer }).
 export async function POST(request: NextRequest) {
-  const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+  const body = await readJson<Record<string, unknown>>(request);
   const documentId = typeof body?.documentId === "string" ? body.documentId : "";
   if (!documentId || !getDocument(documentId)) {
     return Response.json({ error: "Unknown document" }, { status: 400 });
