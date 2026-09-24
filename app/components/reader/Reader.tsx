@@ -85,18 +85,41 @@ export function Reader({ documentId, title, initialPage }: Props) {
     });
   }, []);
 
-  // Ctrl/⌘+B toggles the contents sidebar — except while typing, where it means "bold".
+  // Already reviewing → close; otherwise open (or switch) to the review view.
+  const toggleFlashcards = useCallback(() => {
+    if (flashOpen && flashView.kind === "review") return setFlashOpen(false);
+    setFlashView({ kind: "review" });
+    setFlashOpen(true);
+  }, [flashOpen, flashView]);
+
+  // Already on a blank new-card form → close; otherwise open straight into it.
+  const newFlashcard = useCallback(() => {
+    if (flashOpen && flashView.kind === "form" && !flashView.editing) return setFlashOpen(false);
+    setFlashView({ kind: "form", editing: null });
+    setFlashOpen(true);
+  }, [flashOpen, flashView]);
+
+  // Reader shortcuts, all skipped while typing in a field:
+  //   Ctrl/⌘+B  contents sidebar ("bold" in text fields, hence the skip)
+  //   F         flashcards
+  //   Shift+F   new flashcard
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== "b") return;
       const target = e.target as HTMLElement | null;
       if (target?.closest("input, textarea, [contenteditable]:not([contenteditable='false'])")) return;
-      e.preventDefault();
-      toggleOutline();
+      const key = e.key.toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && key === "b") {
+        e.preventDefault();
+        toggleOutline();
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat && key === "f") {
+        e.preventDefault();
+        if (e.shiftKey) newFlashcard();
+        else toggleFlashcards();
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [toggleOutline]);
+  }, [toggleOutline, toggleFlashcards, newFlashcard]);
 
   // The outline is cached server-side after the first open; start fetching it right away
   // so the sidebar can fill before the PDF has even finished loading.
@@ -352,19 +375,8 @@ export function Reader({ documentId, title, initialPage }: Props) {
       <Toolbar
         toolbarRef={toolbarRef}
         flashOpen={flashOpen && flashView.kind === "review"}
-        onToggleFlashcards={() => {
-          // Already reviewing → close; otherwise open (or switch) to the review view.
-          if (flashOpen && flashView.kind === "review") return setFlashOpen(false);
-          setFlashView({ kind: "review" });
-          setFlashOpen(true);
-        }}
-        onNewFlashcard={() => {
-          if (flashOpen && flashView.kind === "form" && !flashView.editing) {
-            return setFlashOpen(false);
-          }
-          setFlashView({ kind: "form", editing: null });
-          setFlashOpen(true);
-        }}
+        onToggleFlashcards={toggleFlashcards}
+        onNewFlashcard={newFlashcard}
         outlineOpen={outlineOpen}
         onToggleOutline={toggleOutline}
         currentPage={currentPage}

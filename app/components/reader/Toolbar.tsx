@@ -158,7 +158,8 @@ export function Toolbar({
         onClick={onToggleFlashcards}
         aria-label="Flashcards"
         aria-pressed={flashOpen}
-        title="Flashcards — review this document's cards"
+        title="Flashcards — review this document's cards (F)"
+        aria-keyshortcuts="F"
       >
         <FlashcardsIcon />
       </button>
@@ -166,7 +167,8 @@ export function Toolbar({
         className={`${styles.toolBtn} ${styles.penBtn}`}
         onClick={onNewFlashcard}
         aria-label="New flashcard"
-        title="New flashcard"
+        title="New flashcard (Shift+F)"
+        aria-keyshortcuts="Shift+F"
       >
         <NewFlashcardIcon />
       </button>
