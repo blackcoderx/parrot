@@ -173,30 +173,35 @@ export function insertDocument(doc: {
   title: string;
   filename: string;
 }): DocumentRow {
-  const now = Date.now();
-  db.prepare(
-    `INSERT INTO documents (id, title, filename, page_count, last_page, added_at, opened_at)
-     VALUES (@id, @title, @filename, NULL, 1, @now, @now)`,
-  ).run({ ...doc, now });
-  return getDocument(doc.id)!;
+  return db
+    .prepare(
+      `INSERT INTO documents (id, title, filename, page_count, last_page, added_at, opened_at)
+       VALUES (@id, @title, @filename, NULL, 1, @now, @now)
+       RETURNING *`,
+    )
+    .get({ ...doc, now: Date.now() }) as DocumentRow;
 }
 
+/** Record reading progress (omitted fields keep their value). Returns the row, or undefined if missing. */
 export function touchDocument(
   id: string,
   fields: { last_page?: number; page_count?: number },
-): void {
-  const current = getDocument(id);
-  if (!current) return;
-  db.prepare(
-    `UPDATE documents
-        SET last_page = @last_page, page_count = @page_count, opened_at = @opened_at
-      WHERE id = @id`,
-  ).run({
-    id,
-    last_page: fields.last_page ?? current.last_page,
-    page_count: fields.page_count ?? current.page_count,
-    opened_at: Date.now(),
-  });
+): DocumentRow | undefined {
+  return db
+    .prepare(
+      `UPDATE documents
+          SET last_page  = COALESCE(@last_page, last_page),
+              page_count = COALESCE(@page_count, page_count),
+              opened_at  = @opened_at
+        WHERE id = @id
+       RETURNING *`,
+    )
+    .get({
+      id,
+      last_page: fields.last_page ?? null,
+      page_count: fields.page_count ?? null,
+      opened_at: Date.now(),
+    }) as DocumentRow | undefined;
 }
 
 export function deleteDocument(id: string): void {
@@ -232,10 +237,6 @@ export function listFlashcards(documentId: string): FlashcardRow[] {
     .all(documentId) as FlashcardRow[];
 }
 
-export function getFlashcard(id: string): FlashcardRow | undefined {
-  return db.prepare("SELECT * FROM flashcards WHERE id = ?").get(id) as FlashcardRow | undefined;
-}
-
 export function insertFlashcard(card: {
   id: string;
   document_id: string;
@@ -243,32 +244,38 @@ export function insertFlashcard(card: {
   hint: string | null;
   answer: string;
 }): FlashcardRow {
-  const now = Date.now();
-  db.prepare(
-    `INSERT INTO flashcards (id, document_id, question, hint, answer, created_at, updated_at)
-     VALUES (@id, @document_id, @question, @hint, @answer, @now, @now)`,
-  ).run({ ...card, now });
-  return getFlashcard(card.id)!;
+  return db
+    .prepare(
+      `INSERT INTO flashcards (id, document_id, question, hint, answer, created_at, updated_at)
+       VALUES (@id, @document_id, @question, @hint, @answer, @now, @now)
+       RETURNING *`,
+    )
+    .get({ ...card, now: Date.now() }) as FlashcardRow;
 }
 
+/** Edit a card (omitted fields keep their value; a null hint clears it). */
 export function updateFlashcard(
   id: string,
   fields: { question?: string; hint?: string | null; answer?: string },
 ): FlashcardRow | undefined {
-  const current = getFlashcard(id);
-  if (!current) return undefined;
-  db.prepare(
-    `UPDATE flashcards
-        SET question = @question, hint = @hint, answer = @answer, updated_at = @now
-      WHERE id = @id`,
-  ).run({
-    id,
-    question: fields.question ?? current.question,
-    hint: fields.hint !== undefined ? fields.hint : current.hint,
-    answer: fields.answer ?? current.answer,
-    now: Date.now(),
-  });
-  return getFlashcard(id);
+  return db
+    .prepare(
+      `UPDATE flashcards
+          SET question   = COALESCE(@question, question),
+              hint       = CASE WHEN @setHint THEN @hint ELSE hint END,
+              answer     = COALESCE(@answer, answer),
+              updated_at = @now
+        WHERE id = @id
+       RETURNING *`,
+    )
+    .get({
+      id,
+      question: fields.question ?? null,
+      setHint: fields.hint !== undefined ? 1 : 0,
+      hint: fields.hint ?? null,
+      answer: fields.answer ?? null,
+      now: Date.now(),
+    }) as FlashcardRow | undefined;
 }
 
 export function deleteFlashcard(id: string): void {

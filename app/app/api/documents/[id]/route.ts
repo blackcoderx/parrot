@@ -14,13 +14,16 @@ export async function GET(_req: NextRequest, ctx: RouteContext<"/api/documents/[
 // PATCH /api/documents/[id] — update reading progress ({ last_page?, page_count? }).
 export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/documents/[id]">) {
   const { id } = await ctx.params;
-  if (!getDocument(id)) return Response.json({ error: "Not found" }, { status: 404 });
-
   const body = await readJson<{ last_page: number; page_count: number }>(request);
   if (!body) return invalidJson();
+
   const pageNumber = (n: unknown) => (Number.isInteger(n) && (n as number) > 0 ? (n as number) : undefined);
-  touchDocument(id, { last_page: pageNumber(body.last_page), page_count: pageNumber(body.page_count) });
-  return Response.json(getDocument(id));
+  const doc = touchDocument(id, {
+    last_page: pageNumber(body.last_page),
+    page_count: pageNumber(body.page_count),
+  });
+  if (!doc) return Response.json({ error: "Not found" }, { status: 404 });
+  return Response.json(doc);
 }
 
 // DELETE /api/documents/[id] — remove the row (cascades highlights/chats) and the file.

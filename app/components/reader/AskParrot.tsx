@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import type { NormRect } from "./types";
@@ -77,14 +77,15 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
   // so the keydown listener can stay stable without a stale closure.
   const saveRef = useRef<() => void>(() => {});
 
-  const contextText = anchor.kind === "selection" ? anchor.text : undefined;
-
-  const { messages, sendMessage, setMessages, status, error } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-      body: { context: { title, text: contextText } },
-    }),
-  });
+  // Created once: useChat keeps its first transport, so rebuilding it each render was waste.
+  const [transport] = useState(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        body: { context: { title, text: anchor.kind === "selection" ? anchor.text : undefined } },
+      }),
+  );
+  const { messages, sendMessage, setMessages, status, error } = useChat({ transport });
 
   // Ctrl/Cmd+Enter saves (Escape/resize/drag are handled by useFloatingWindow).
   useEffect(() => {
@@ -209,7 +210,7 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
   }
 
   const regionImage = anchor.kind === "region" ? anchor.image : null;
-  const canSave = useMemo(() => messages.length > 0 && !busy, [messages.length, busy]);
+  const canSave = messages.length > 0 && !busy;
   // Keep the shortcut's save action current (guarded like the Save button) so
   // the stable window keydown listener always calls the latest save().
   useEffect(() => {
