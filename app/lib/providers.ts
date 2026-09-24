@@ -131,11 +131,27 @@ interface ConfigFile {
   [providerId: string]: { apiKey?: string; baseURL?: string } | undefined;
 }
 
+const CONFIG_PATH = path.join(PARROT_DIR, "config.json");
+
+// Parsed config, reused until the file's mtime changes (a settings request resolves
+// keys for every provider, so re-reading on each lookup meant ~20 reads per request).
+let configCache: { mtimeMs: number; data: ConfigFile } | null = null;
+
 function readConfigFile(): ConfigFile {
   try {
-    const raw = fs.readFileSync(path.join(PARROT_DIR, "config.json"), "utf8");
-    return JSON.parse(raw) as ConfigFile;
+    const { mtimeMs } = fs.statSync(CONFIG_PATH);
+    if (configCache?.mtimeMs !== mtimeMs) {
+      let data: ConfigFile;
+      try {
+        data = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8")) as ConfigFile;
+      } catch {
+        data = {};
+      }
+      configCache = { mtimeMs, data };
+    }
+    return configCache.data;
   } catch {
+    configCache = null; // no config file
     return {};
   }
 }
