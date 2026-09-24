@@ -1,34 +1,4 @@
-/** A rectangle in page-normalized coordinates (0..1 of the rendered page box). */
-export interface NormRect {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-export interface Highlight {
-  id: string;
-  document_id: string;
-  page: number;
-  rects: NormRect[];
-  color: string;
-  text: string;
-  /** A reader's note attached to this highlight, or null for plain highlights. */
-  note: string | null;
-  created_at: number;
-  /** Id of an attached saved chat thread, or null. */
-  chat_id: string | null;
-}
-
-export interface Flashcard {
-  id: string;
-  document_id: string;
-  question: string;
-  hint: string | null;
-  answer: string;
-  created_at: number;
-  updated_at: number;
-}
+export type { Flashcard, Highlight, NormRect } from "@/types";
 
 /** Faint warm-amber wash for note highlights (kept readable over text). */
 export const NOTE_COLOR = "rgba(245, 179, 1, 0.16)";

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
-import { getChatByHighlight, listMessages, saveThread, type NormRect } from "@/lib/db";
+import { getChatByHighlight, listMessages, saveThread } from "@/lib/db";
 import { invalidJson, readJson } from "@/lib/http";
+import type { NormRect } from "@/types";
 
 interface SaveBody {
   documentId: string;

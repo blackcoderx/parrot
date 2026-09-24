@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { randomUUID } from "node:crypto";
-import { listHighlights, insertHighlight, type NormRect } from "@/lib/db";
+import { listHighlights, insertHighlight } from "@/lib/db";
 import { invalidJson, readJson } from "@/lib/http";
+import type { NormRect } from "@/types";
 
 // GET /api/highlights?documentId=... — all highlights for a document.
 export async function GET(request: NextRequest) {

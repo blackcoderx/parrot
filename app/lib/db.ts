@@ -3,65 +3,12 @@ import "server-only";
 import Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
 import { DB_PATH, ensureDirs } from "./paths";
-
-
-export interface DocumentRow {
-  id: string;
-  title: string;
-  filename: string;
-  page_count: number | null;
-  last_page: number;
-  added_at: number;
-  opened_at: number;
-}
-
-/** A rectangle in page-normalized coordinates (0..1 of page width/height). */
-export interface NormRect {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-export interface HighlightRow {
-  id: string;
-  document_id: string;
-  page: number;
-  rects: NormRect[];
-  color: string;
-  text: string;
-  /** A reader's note attached to this highlight, or null for plain highlights. */
-  note: string | null;
-  created_at: number;
-  /** Id of an attached saved chat thread, or null. Populated via LEFT JOIN. */
-  chat_id: string | null;
-}
+import type { DocumentRow, Flashcard, Highlight, Message, NormRect } from "@/types";
 
 // Shape as stored in SQLite (rects is a JSON string column).
-interface HighlightDbRow extends Omit<HighlightRow, "rects"> {
+interface HighlightDbRow extends Omit<Highlight, "rects"> {
   rects: string;
 }
-
-export interface FlashcardRow {
-  id: string;
-  document_id: string;
-  question: string;
-  /** Optional nudge shown on request before the answer is revealed. */
-  hint: string | null;
-  answer: string;
-  created_at: number;
-  updated_at: number;
-}
-
-export interface MessageRow {
-  id: string;
-  chat_id: string;
-  role: string;
-  content: string;
-  image: string | null;
-  created_at: number;
-}
-
 
 const globalForDb = globalThis as unknown as { parrotDb?: Database.Database };
 
@@ -231,10 +178,10 @@ export function saveOutline(documentId: string, version: number, data: string): 
 // Flashcard queries
 // ---------------------------------------------------------------------------
 
-export function listFlashcards(documentId: string): FlashcardRow[] {
+export function listFlashcards(documentId: string): Flashcard[] {
   return db
     .prepare("SELECT * FROM flashcards WHERE document_id = ? ORDER BY created_at ASC")
-    .all(documentId) as FlashcardRow[];
+    .all(documentId) as Flashcard[];
 }
 
 export function insertFlashcard(card: {
@@ -243,21 +190,21 @@ export function insertFlashcard(card: {
   question: string;
   hint: string | null;
   answer: string;
-}): FlashcardRow {
+}): Flashcard {
   return db
     .prepare(
       `INSERT INTO flashcards (id, document_id, question, hint, answer, created_at, updated_at)
        VALUES (@id, @document_id, @question, @hint, @answer, @now, @now)
        RETURNING *`,
     )
-    .get({ ...card, now: Date.now() }) as FlashcardRow;
+    .get({ ...card, now: Date.now() }) as Flashcard;
 }
 
 /** Edit a card (omitted fields keep their value; a null hint clears it). */
 export function updateFlashcard(
   id: string,
   fields: { question?: string; hint?: string | null; answer?: string },
-): FlashcardRow | undefined {
+): Flashcard | undefined {
   return db
     .prepare(
       `UPDATE flashcards
@@ -275,7 +222,7 @@ export function updateFlashcard(
       hint: fields.hint ?? null,
       answer: fields.answer ?? null,
       now: Date.now(),
-    }) as FlashcardRow | undefined;
+    }) as Flashcard | undefined;
 }
 
 export function deleteFlashcard(id: string): void {
@@ -286,11 +233,11 @@ export function deleteFlashcard(id: string): void {
 // Highlight queries
 // ---------------------------------------------------------------------------
 
-function parseHighlight(row: HighlightDbRow): HighlightRow {
+function parseHighlight(row: HighlightDbRow): Highlight {
   return { ...row, rects: JSON.parse(row.rects) as NormRect[] };
 }
 
-export function listHighlights(documentId: string): HighlightRow[] {
+export function listHighlights(documentId: string): Highlight[] {
   const rows = db
     .prepare(
       `SELECT h.*, c.id AS chat_id
@@ -311,7 +258,7 @@ export function insertHighlight(h: {
   color: string;
   text: string;
   note?: string | null;
-}): HighlightRow {
+}): Highlight {
   const created_at = Date.now();
   const note = h.note ?? null;
   db.prepare(
@@ -362,10 +309,10 @@ export function getChatByHighlight(highlightId: string): { id: string } | undefi
     | undefined;
 }
 
-export function listMessages(chatId: string): MessageRow[] {
+export function listMessages(chatId: string): Message[] {
   return db
     .prepare("SELECT * FROM messages WHERE chat_id = ? ORDER BY created_at ASC")
-    .all(chatId) as MessageRow[];
+    .all(chatId) as Message[];
 }
 
 /**
