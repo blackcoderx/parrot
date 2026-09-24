@@ -223,8 +223,24 @@ export function getModel(prefs: AiPrefs): LanguageModel {
 // Model listing (auto-fetch where the provider exposes an endpoint)
 // ---------------------------------------------------------------------------
 
+/** OpenAI-style list shape (OpenAI, Anthropic and every compatible runtime). */
 interface ModelsResponse {
   data?: Array<{ id: string }>;
+}
+
+/** Google's list shape: { models: [{ name: "models/…", supportedGenerationMethods }] }. */
+interface GoogleModelsResponse {
+  models?: Array<{ name?: string; supportedGenerationMethods?: string[] }>;
+}
+
+/** GET a JSON endpoint with a timeout; null on any failure. */
+async function getJson(url: string, headers: Record<string, string>): Promise<unknown> {
+  try {
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Fetch the provider's available model ids; returns [] on any failure. */
@@ -232,51 +248,26 @@ export async function listModels(id: string, prefs?: AiPrefs): Promise<string[]>
   const desc = getProvider(id);
   if (!desc) return [];
 
-  const baseURL = resolveBaseURL(id, prefs);
+  const baseURL = resolveBaseURL(id, prefs).replace(/\/$/, "");
   if (!baseURL) return [];
   const apiKey = resolveKey(id);
   if (desc.needsKey && !apiKey) return [];
 
-  // Google's list endpoint differs from the OpenAI shape: x-goog-api-key auth and
-  // { models: [{ name: "models/…", supportedGenerationMethods }] }.
+  let ids: string[];
   if (desc.kind === "google") {
-    try {
-      const res = await fetch(`${baseURL.replace(/\/$/, "")}/models?pageSize=1000`, {
-        headers: apiKey ? { "x-goog-api-key": apiKey } : {},
-        signal: AbortSignal.timeout(8000),
-      });
-      if (!res.ok) return [];
-      const json = (await res.json()) as {
-        models?: Array<{ name?: string; supportedGenerationMethods?: string[] }>;
-      };
-      return (json.models ?? [])
-        .filter((m) => m.supportedGenerationMethods?.includes("generateContent"))
-        .map((m) => (m.name ?? "").replace(/^models\//, ""))
-        .filter(Boolean)
-        .sort((a, b) => a.localeCompare(b));
-    } catch {
-      return [];
-    }
+    const json = (await getJson(`${baseURL}/models?pageSize=1000`, {
+      ...(apiKey && { "x-goog-api-key": apiKey }),
+    })) as GoogleModelsResponse | null;
+    ids = (json?.models ?? [])
+      .filter((m) => m.supportedGenerationMethods?.includes("generateContent"))
+      .map((m) => (m.name ?? "").replace(/^models\//, ""));
+  } else {
+    const headers: Record<string, string> =
+      desc.kind === "anthropic"
+        ? { "anthropic-version": "2023-06-01", ...(apiKey && { "x-api-key": apiKey }) }
+        : { ...(apiKey && { Authorization: `Bearer ${apiKey}` }) };
+    const json = (await getJson(`${baseURL}/models`, headers)) as ModelsResponse | null;
+    ids = (json?.data ?? []).map((m) => m.id);
   }
-
-  const headers: Record<string, string> = {};
-  if (desc.kind === "anthropic") {
-    if (apiKey) headers["x-api-key"] = apiKey;
-    headers["anthropic-version"] = "2023-06-01";
-  } else if (apiKey) {
-    headers["Authorization"] = `Bearer ${apiKey}`;
-  }
-
-  try {
-    const res = await fetch(`${baseURL.replace(/\/$/, "")}/models`, {
-      headers,
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) return [];
-    const json = (await res.json()) as ModelsResponse;
-    const ids = (json.data ?? []).map((m) => m.id).filter(Boolean);
-    return ids.sort((a, b) => a.localeCompare(b));
-  } catch {
-    return [];
-  }
+  return ids.filter(Boolean).sort((a, b) => a.localeCompare(b));
 }

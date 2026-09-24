@@ -10,17 +10,72 @@ import type { AiPrefs } from "./settings";
 // from env vars or ~/.parrot/config.json — never the SQLite DB.
 // ---------------------------------------------------------------------------
 
+const MAX_RESULTS = 5;
+const SNIPPET_MAX = 600;
+
+/** One result as a backend returns it, before normalizing. */
+interface RawResult {
+  title?: string;
+  url?: string;
+  snippet?: string;
+  publishedDate?: string;
+}
+
 interface SearchDescriptor {
   id: string;
   label: string;
   /** Env var that supplies the API key. */
   envKey: string;
   endpoint: string;
+  /** Auth headers + JSON body for a query (all backends are a single POST). */
+  request: (apiKey: string, query: string) => { headers: Record<string, string>; body: unknown };
+  /** Pull the results out of the backend's JSON response. */
+  results: (json: unknown) => RawResult[];
+}
+
+interface TavilyResponse {
+  results?: Array<{ title?: string; url?: string; content?: string; published_date?: string }>;
+}
+
+interface ExaResponse {
+  results?: Array<{ title?: string; url?: string; text?: string; publishedDate?: string }>;
 }
 
 export const SEARCH_PROVIDERS: SearchDescriptor[] = [
-  { id: "tavily", label: "Tavily", envKey: "TAVILY_API_KEY", endpoint: "https://api.tavily.com/search" },
-  { id: "exa", label: "Exa", envKey: "EXA_API_KEY", endpoint: "https://api.exa.ai/search" },
+  {
+    id: "tavily",
+    label: "Tavily",
+    envKey: "TAVILY_API_KEY",
+    endpoint: "https://api.tavily.com/search",
+    request: (apiKey, query) => ({
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: { query, max_results: MAX_RESULTS },
+    }),
+    results: (json) =>
+      ((json as TavilyResponse).results ?? []).map((r) => ({
+        title: r.title,
+        url: r.url,
+        snippet: r.content,
+        publishedDate: r.published_date,
+      })),
+  },
+  {
+    id: "exa",
+    label: "Exa",
+    envKey: "EXA_API_KEY",
+    endpoint: "https://api.exa.ai/search",
+    request: (apiKey, query) => ({
+      headers: { "x-api-key": apiKey },
+      body: { query, numResults: MAX_RESULTS, contents: { text: true } },
+    }),
+    results: (json) =>
+      ((json as ExaResponse).results ?? []).map((r) => ({
+        title: r.title,
+        url: r.url,
+        snippet: r.text,
+        publishedDate: r.publishedDate,
+      })),
+  },
 ];
 
 export function getSearchProvider(id: string): SearchDescriptor | undefined {
@@ -48,75 +103,39 @@ interface SearchResult {
 
 type SearchOutcome = SearchResult[] | { error: string };
 
-const MAX_RESULTS = 5;
-const SNIPPET_MAX = 600;
-
 function clip(text: string): string {
   const t = text.trim();
   return t.length > SNIPPET_MAX ? `${t.slice(0, SNIPPET_MAX)}…` : t;
 }
 
-// --- Backend adapters (mirror listModels: AbortSignal.timeout + try/catch) ---
-
-interface TavilyResponse {
-  results?: Array<{ title?: string; url?: string; content?: string; published_date?: string }>;
-}
-
-async function searchTavily(desc: SearchDescriptor, apiKey: string, query: string): Promise<SearchOutcome> {
-  try {
-    const res = await fetch(desc.endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ query, max_results: MAX_RESULTS }),
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) return { error: `Tavily search failed (${res.status})` };
-    const json = (await res.json()) as TavilyResponse;
-    return (json.results ?? []).slice(0, MAX_RESULTS).map((r) => ({
-      title: r.title ?? "",
-      url: r.url ?? "",
-      snippet: clip(r.content ?? ""),
-      publishedDate: r.published_date || undefined,
-    }));
-  } catch {
-    return { error: "Tavily search failed or timed out." };
-  }
-}
-
-interface ExaResponse {
-  results?: Array<{ title?: string; url?: string; text?: string; publishedDate?: string }>;
-}
-
-async function searchExa(desc: SearchDescriptor, apiKey: string, query: string): Promise<SearchOutcome> {
-  try {
-    const res = await fetch(desc.endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-api-key": apiKey },
-      body: JSON.stringify({ query, numResults: MAX_RESULTS, contents: { text: true } }),
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) return { error: `Exa search failed (${res.status})` };
-    const json = (await res.json()) as ExaResponse;
-    return (json.results ?? []).slice(0, MAX_RESULTS).map((r) => ({
-      title: r.title ?? "",
-      url: r.url ?? "",
-      snippet: clip(r.text ?? ""),
-      publishedDate: r.publishedDate || undefined,
-    }));
-  } catch {
-    return { error: "Exa search failed or timed out." };
-  }
-}
-
+// Mirrors listModels: AbortSignal.timeout + try/catch, errors returned to the model as data.
 async function runSearch(providerId: string, query: string): Promise<SearchOutcome> {
   const desc = getSearchProvider(providerId);
   if (!desc) return { error: `Unknown search provider: ${providerId}` };
   const apiKey = resolveApiKey(desc.envKey, providerId);
   if (!apiKey) return { error: `No API key configured for ${desc.label}.` };
 
-  if (providerId === "tavily") return searchTavily(desc, apiKey, query);
-  if (providerId === "exa") return searchExa(desc, apiKey, query);
-  return { error: `Search provider ${providerId} is not implemented.` };
+  const { headers, body } = desc.request(apiKey, query);
+  try {
+    const res = await fetch(desc.endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...headers },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return { error: `${desc.label} search failed (${res.status})` };
+    return desc
+      .results(await res.json())
+      .slice(0, MAX_RESULTS)
+      .map((r) => ({
+        title: r.title ?? "",
+        url: r.url ?? "",
+        snippet: clip(r.snippet ?? ""),
+        publishedDate: r.publishedDate || undefined,
+      }));
+  } catch {
+    return { error: `${desc.label} search failed or timed out.` };
+  }
 }
 
 // ---------------------------------------------------------------------------

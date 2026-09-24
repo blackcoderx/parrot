@@ -173,33 +173,28 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
     // server reuses the chat and replaces its messages) — no duplicate rows.
     const existingId = anchor.kind === "existing" ? anchor.highlightId : savedHighlightId;
 
-    // Chat highlights render from the accent via CSS; this is only a fallback color.
-    const accent =
-      getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#71F79F";
-
-    let body;
-    if (existingId) {
-      body = { documentId, highlightId: existingId, messages: simplified };
-    } else if (anchor.kind === "region") {
-      body = {
-        documentId,
-        highlight: { page: anchor.page, rects: [anchor.rect], color: accent, text: "" },
-        messages: simplified,
-      };
-    } else if (anchor.kind === "selection") {
-      body = {
-        documentId,
-        highlight: { page: anchor.page, rects: anchor.rects, color: accent, text: anchor.text },
-        messages: simplified,
-      };
-    } else {
-      return; // "existing" anchor always has an id, so this is unreachable
+    // Not anchored yet: send the highlight to create alongside the thread.
+    let highlight;
+    if (!existingId) {
+      if (anchor.kind === "existing") return; // always has an id, so this is unreachable
+      // Chat highlights render from the accent via CSS; this is only a fallback color.
+      const color =
+        getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#71F79F";
+      highlight =
+        anchor.kind === "region"
+          ? { page: anchor.page, rects: [anchor.rect], color, text: "" }
+          : { page: anchor.page, rects: anchor.rects, color, text: anchor.text };
     }
 
     const res = await fetch("/api/chats", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        documentId,
+        highlightId: existingId ?? undefined,
+        highlight,
+        messages: simplified,
+      }),
     });
     if (res.ok) {
       const data: { highlightId?: string } = await res.json().catch(() => ({}));
