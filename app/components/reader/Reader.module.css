@@ -795,12 +795,6 @@
   cursor: default;
 }
 
-.askPrivacy {
-  font-size: 10.5px;
-  color: var(--muted);
-  padding: 0 12px 10px;
-}
-
 /* Note highlights — faint warm amber so the text underneath stays readable */
 .noteHighlight {
   position: absolute;

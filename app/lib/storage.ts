@@ -34,8 +34,3 @@ export async function deletePdf(id: string): Promise<void> {
     // already gone
   }
 }
-
-/** Whether a stored PDF exists on disk. */
-export function pdfExists(id: string): boolean {
-  return fs.existsSync(pdfPath(id));
-}

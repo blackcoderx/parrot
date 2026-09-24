@@ -30,8 +30,6 @@ export interface Flashcard {
   updated_at: number;
 }
 
-export type Tool ="select" | "highlight" | "ai";
-
 /** Faint warm-amber wash for note highlights (kept readable over text). */
 export const NOTE_COLOR = "rgba(245, 179, 1, 0.16)";
 
