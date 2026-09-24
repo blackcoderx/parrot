@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
 import type { NormRect } from "./types";
+import { normalizeBox, useDragBox } from "./useDragBox";
 import styles from "./Reader.module.css";
 
 interface Props {
@@ -9,51 +9,12 @@ interface Props {
   onRegion: (page: number, rect: NormRect, image: string, anchorRect: DOMRect) => void;
 }
 
-interface Box {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
 /**
  * Active in AI-pen mode: drag a rectangle over the page, then crop that region
  * from the rendered page canvas and hand it back as a PNG data URL.
  */
 export function AiPenLayer({ pageNumber, onRegion }: Props) {
-  const ref = useRef<HTMLDivElement>(null);
-  const start = useRef<{ x: number; y: number } | null>(null);
-  const [box, setBox] = useState<Box | null>(null);
-
-  function localPoint(e: React.MouseEvent) {
-    const rect = ref.current!.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-  }
-
-  function onMouseDown(e: React.MouseEvent) {
-    start.current = localPoint(e);
-    setBox({ ...start.current, w: 0, h: 0 });
-  }
-
-  function onMouseMove(e: React.MouseEvent) {
-    if (!start.current) return;
-    const p = localPoint(e);
-    setBox({
-      x: Math.min(start.current.x, p.x),
-      y: Math.min(start.current.y, p.y),
-      w: Math.abs(p.x - start.current.x),
-      h: Math.abs(p.y - start.current.y),
-    });
-  }
-
-  function onMouseUp() {
-    const layer = ref.current;
-    const b = box;
-    start.current = null;
-    setBox(null);
-    if (!layer || !b || b.w < 8 || b.h < 8) return;
-
-    const rect = layer.getBoundingClientRect();
+  const { ref, box, handlers } = useDragBox((b, layer, rect) => {
     const canvas = layer.parentElement?.querySelector("canvas");
     if (!canvas) return;
 
@@ -77,21 +38,12 @@ export function AiPenLayer({ pageNumber, onRegion }: Props) {
       tmp.height,
     );
 
-    const image = tmp.toDataURL("image/png");
-    const norm: NormRect = { x: b.x / rect.width, y: b.y / rect.height, w: b.w / rect.width, h: b.h / rect.height };
-    const anchorRect = new DOMRect(rect.left + b.x, rect.top + b.y, b.w, b.h);
-    onRegion(pageNumber, norm, image, anchorRect);
-  }
+    const { norm, anchorRect } = normalizeBox(b, rect);
+    onRegion(pageNumber, norm, tmp.toDataURL("image/png"), anchorRect);
+  });
 
   return (
-    <div
-      ref={ref}
-      className={styles.aiPenLayer}
-      onMouseDown={onMouseDown}
-      onMouseMove={onMouseMove}
-      onMouseUp={onMouseUp}
-      onMouseLeave={onMouseUp}
-    >
+    <div ref={ref} className={styles.aiPenLayer} {...handlers}>
       {box && (
         <div
           className={styles.aiPenBox}
