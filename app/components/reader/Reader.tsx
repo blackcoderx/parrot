@@ -76,14 +76,27 @@ export function Reader({ documentId, title, initialPage }: Props) {
     loadHighlights();
   }, [loadHighlights]);
 
-  function toggleOutline() {
+  const toggleOutline = useCallback(() => {
     setOutlineOpen((open) => {
       try {
         localStorage.setItem(OUTLINE_KEY, open ? "0" : "1");
       } catch {}
       return !open;
     });
-  }
+  }, []);
+
+  // Ctrl/⌘+B toggles the contents sidebar — except while typing, where it means "bold".
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== "b") return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("input, textarea, [contenteditable]:not([contenteditable='false'])")) return;
+      e.preventDefault();
+      toggleOutline();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [toggleOutline]);
 
   // The outline is cached server-side after the first open; start fetching it right away
   // so the sidebar can fill before the PDF has even finished loading.

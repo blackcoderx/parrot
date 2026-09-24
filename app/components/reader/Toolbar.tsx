@@ -69,7 +69,8 @@ export function Toolbar({
         onClick={onToggleOutline}
         aria-label="Contents"
         aria-pressed={outlineOpen}
-        title="Contents — jump to a section"
+        title="Contents — jump to a section (Ctrl/⌘+B)"
+        aria-keyshortcuts="Control+B Meta+B"
       >
         <OutlineIcon />
       </button>
