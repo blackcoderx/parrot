@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Popover } from "@base-ui-components/react/popover";
 import { Select } from "@base-ui-components/react/select";
+import { getJson, sendJson } from "@/components/api";
 import styles from "./SettingsPopover.module.css";
 
 interface ProviderMeta {
@@ -41,15 +42,14 @@ export function SettingsPopover() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.json())
-      .then(
-        (d: { prefs: Prefs; providers: ProviderMeta[]; searchProviders: SearchProviderMeta[] }) => {
-          setPrefs(d.prefs);
-          setProviders(d.providers);
-          setSearchProviders(d.searchProviders ?? []);
-        },
-      )
+    getJson<{ prefs: Prefs; providers: ProviderMeta[]; searchProviders: SearchProviderMeta[] }>(
+      "/api/settings",
+    )
+      .then((d) => {
+        setPrefs(d.prefs);
+        setProviders(d.providers);
+        setSearchProviders(d.searchProviders ?? []);
+      })
       .catch(() => {});
   }, []);
 
@@ -58,9 +58,8 @@ export function SettingsPopover() {
     const provider = prefs?.activeProvider;
     if (!provider) return;
     let cancelled = false;
-    fetch(`/api/models?provider=${provider}`)
-      .then((r) => r.json())
-      .then((d: { models: string[] }) => !cancelled && setModels(d.models ?? []))
+    getJson<{ models: string[] }>(`/api/models?provider=${provider}`)
+      .then((d) => !cancelled && setModels(d.models ?? []))
       .catch(() => !cancelled && setModels([]));
     return () => {
       cancelled = true;
@@ -87,12 +86,8 @@ export function SettingsPopover() {
 
   async function save() {
     if (!prefs) return;
-    await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(prefs),
-    });
-    setSaved(true);
+    const res = await sendJson("/api/settings", "PUT", prefs).catch(() => null);
+    if (res?.ok) setSaved(true);
   }
 
   return (

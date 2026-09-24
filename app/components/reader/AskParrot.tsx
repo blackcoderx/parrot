@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
+import { getJson, sendJson } from "@/components/api";
 import type { NormRect } from "./types";
 import Markdown from "./Markdown";
 import { useFloatingWindow } from "./useFloatingWindow";
@@ -102,9 +103,10 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
   // Reopen: seed the saved thread.
   useEffect(() => {
     if (anchor.kind !== "existing") return;
-    fetch(`/api/chats?highlightId=${anchor.highlightId}`)
-      .then((r) => r.json())
-      .then((d: { messages: { role: string; content: string; image?: string | null }[] }) => {
+    getJson<{ messages: { role: string; content: string; image?: string | null }[] }>(
+      `/api/chats?highlightId=${anchor.highlightId}`,
+    )
+      .then((d) => {
         imageSent.current = true; // history already carries any image
         setMessages(
           d.messages.map((m, i) => ({
@@ -186,15 +188,11 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
           : { page: anchor.page, rects: anchor.rects, color, text: anchor.text };
     }
 
-    const res = await fetch("/api/chats", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        documentId,
-        highlightId: existingId ?? undefined,
-        highlight,
-        messages: simplified,
-      }),
+    const res = await sendJson("/api/chats", "POST", {
+      documentId,
+      highlightId: existingId ?? undefined,
+      highlight,
+      messages: simplified,
     });
     if (res.ok) {
       const data: { highlightId?: string } = await res.json().catch(() => ({}));

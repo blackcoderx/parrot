@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { getJson, sendJson } from "@/components/api";
 import { Toolbar } from "./Toolbar";
 import { SelectionMenu } from "./SelectionMenu";
 import { AskParrot, type AskAnchor } from "./AskParrot";
@@ -66,8 +67,7 @@ export function Reader({ documentId, title, initialPage }: Props) {
   const patchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadHighlights = useCallback(() => {
-    fetch(`/api/highlights?documentId=${documentId}`)
-      .then((r) => r.json())
+    getJson<Highlight[]>(`/api/highlights?documentId=${documentId}`)
       .then(setHighlights)
       .catch(() => setHighlights([]));
   }, [documentId]);
@@ -124,9 +124,9 @@ export function Reader({ documentId, title, initialPage }: Props) {
   // The outline is cached server-side after the first open; start fetching it right away
   // so the sidebar can fill before the PDF has even finished loading.
   useEffect(() => {
-    const cached = fetch(`/api/documents/${documentId}/outline`)
-      .then((r) => (r.ok ? (r.json() as Promise<OutlineNode[] | null>) : null))
-      .catch(() => null);
+    const cached = getJson<OutlineNode[] | null>(`/api/documents/${documentId}/outline`).catch(
+      () => null,
+    );
     cachedOutline.current = cached;
     cached.then((nodes) => nodes && setOutline(nodes));
   }, [documentId]);
@@ -143,11 +143,7 @@ export function Reader({ documentId, title, initialPage }: Props) {
       if (await cachedOutline.current) return;
       const nodes = await loadOutline(pdf).catch(() => [] as OutlineNode[]);
       setOutline(nodes);
-      fetch(`/api/documents/${documentId}/outline`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(nodes),
-      }).catch(() => {});
+      sendJson(`/api/documents/${documentId}/outline`, "PUT", nodes).catch(() => {});
     },
     [documentId],
   );
@@ -173,16 +169,12 @@ export function Reader({ documentId, title, initialPage }: Props) {
 
   async function handleHighlight() {
     if (!selection) return;
-    const res = await fetch("/api/highlights", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        documentId,
-        page: selection.page,
-        rects: selection.rects,
-        color: activeColor,
-        text: selection.text,
-      }),
+    const res = await sendJson("/api/highlights", "POST", {
+      documentId,
+      page: selection.page,
+      rects: selection.rects,
+      color: activeColor,
+      text: selection.text,
     });
     if (res.ok) {
       const created: Highlight = await res.json();
@@ -280,11 +272,7 @@ export function Reader({ documentId, title, initialPage }: Props) {
       pageRef.current = page;
       if (patchTimer.current) clearTimeout(patchTimer.current);
       patchTimer.current = setTimeout(() => {
-        fetch(`/api/documents/${documentId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ last_page: page }),
-        }).catch(() => {});
+        sendJson(`/api/documents/${documentId}`, "PATCH", { last_page: page }).catch(() => {});
       }, 800);
     },
     [documentId],
@@ -293,11 +281,7 @@ export function Reader({ documentId, title, initialPage }: Props) {
   const handleNumPages = useCallback(
     (n: number) => {
       setNumPages(n);
-      fetch(`/api/documents/${documentId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ page_count: n }),
-      }).catch(() => {});
+      sendJson(`/api/documents/${documentId}`, "PATCH", { page_count: n }).catch(() => {});
     },
     [documentId],
   );

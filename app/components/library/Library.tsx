@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertDialog } from "@base-ui-components/react/alert-dialog";
+import { getJson } from "@/components/api";
 import { SettingsPopover } from "@/components/settings/SettingsPopover";
 import type { DocumentRow } from "@/types";
 import styles from "./Library.module.css";
@@ -25,8 +26,7 @@ export function Library({ initialDocs }: { initialDocs: LibraryDoc[] }) {
       if (!res.ok) throw new Error("Delete failed");
     } catch {
       // Failed — resync the list from the server so nothing is silently lost.
-      fetch("/api/documents")
-        .then((r) => r.json())
+      getJson<LibraryDoc[]>("/api/documents")
         .then(setRecent)
         .catch(() => {});
     }

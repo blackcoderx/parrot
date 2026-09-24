@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Popover } from "@base-ui-components/react/popover";
+import { getJson, sendJson } from "@/components/api";
 import type { Flashcard } from "./types";
 import styles from "./Reader.module.css";
 
@@ -37,9 +38,8 @@ export function Flashcards({
   useEffect(() => {
     if (!open || loaded.current) return;
     loaded.current = true;
-    fetch(`/api/flashcards?documentId=${documentId}`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((list: Flashcard[]) => setCards(list))
+    getJson<Flashcard[]>(`/api/flashcards?documentId=${documentId}`)
+      .then(setCards)
       .catch(() => setCards([]));
   }, [open, documentId]);
 
@@ -296,11 +296,10 @@ function CardForm({
     setSaving(true);
     setError(null);
     const body = { question, hint: hint.trim() ? hint : null, answer };
-    const res = await fetch(editing ? `/api/flashcards/${editing.id}` : "/api/flashcards", {
-      method: editing ? "PATCH" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editing ? body : { documentId, ...body }),
-    }).catch(() => null);
+    const res = await (editing
+      ? sendJson(`/api/flashcards/${editing.id}`, "PATCH", body)
+      : sendJson("/api/flashcards", "POST", { documentId, ...body })
+    ).catch(() => null);
     setSaving(false);
     if (!res?.ok) {
       setError("Couldn't save the card. Try again.");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { sendJson } from "@/components/api";
 import { NOTE_COLOR, type Highlight, type NormRect } from "./types";
 import { NoteIcon } from "./NoteIcon";
 import { useFloatingWindow } from "./useFloatingWindow";
@@ -31,29 +32,17 @@ export function NoteEditor({ documentId, anchorRect, anchor, onClose, onSaved }:
     if (!note || saving) return;
     setSaving(true);
 
-    let res: Response;
-    if (anchor.kind === "existing") {
-      res = await fetch(`/api/highlights/${anchor.highlight.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ note }),
-      });
-    } else {
-      const rects = anchor.kind === "selection" ? anchor.rects : [anchor.rect];
-      const highlightText = anchor.kind === "selection" ? anchor.text : "";
-      res = await fetch("/api/highlights", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          documentId,
-          page: anchor.page,
-          rects,
-          color: NOTE_COLOR,
-          text: highlightText,
-          note,
-        }),
-      });
-    }
+    const res =
+      anchor.kind === "existing"
+        ? await sendJson(`/api/highlights/${anchor.highlight.id}`, "PATCH", { note })
+        : await sendJson("/api/highlights", "POST", {
+            documentId,
+            page: anchor.page,
+            rects: anchor.kind === "selection" ? anchor.rects : [anchor.rect],
+            color: NOTE_COLOR,
+            text: anchor.kind === "selection" ? anchor.text : "",
+            note,
+          });
 
     setSaving(false);
     if (res.ok) {
