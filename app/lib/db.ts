@@ -93,7 +93,7 @@ function createDb(): Database.Database {
     );
     CREATE INDEX IF NOT EXISTS idx_highlights_document ON highlights(document_id);
 
-    -- Created now, used by the AI harness in milestone 2.
+    -- Saved Ask Parrot threads, each anchored to a highlight.
     CREATE TABLE IF NOT EXISTS chats (
       id           TEXT PRIMARY KEY,
       document_id  TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
@@ -109,6 +109,9 @@ function createDb(): Database.Database {
       image      TEXT,
       created_at INTEGER NOT NULL
     );
+
+    CREATE INDEX IF NOT EXISTS idx_chats_highlight ON chats(highlight_id);
+    CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages(chat_id);
 
     CREATE TABLE IF NOT EXISTS settings (
       key   TEXT PRIMARY KEY,
