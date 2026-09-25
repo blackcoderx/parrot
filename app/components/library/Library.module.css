@@ -103,7 +103,6 @@
   flex: 1;
   min-width: 0;
   align-items: center;
-  justify-content: space-between;
   padding: 10px 8px;
   border: none;
   background: transparent;
@@ -117,15 +116,77 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* Always leave clear space before the progress / actions slot. */
+  padding-right: 16px;
+}
+
+/* Right-edge slot: reading progress on the front, rename / remove on the back. */
+.rowSide {
+  flex-shrink: 0;
+  width: 88px;
+  height: 32px;
+  margin-right: 4px;
+  perspective: 400px;
+}
+
+.flip {
+  position: relative;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.rowWrap:hover .flip,
+.rowWrap:focus-within .flip {
+  transform: rotateX(180deg);
+}
+
+.face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  backface-visibility: hidden;
 }
 
 /* Reading progress, e.g. "p. 4 / 15" */
-.rowMeta {
-  flex-shrink: 0;
-  margin-left: 12px;
+.front {
+  padding-right: 4px;
   font-size: 12px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.back {
+  gap: 2px;
+  transform: rotateX(180deg);
+}
+
+/* Reduced motion: cross-fade the faces instead of turning the card over. */
+@media (prefers-reduced-motion: reduce) {
+  .flip,
+  .rowWrap:hover .flip,
+  .rowWrap:focus-within .flip {
+    transform: none;
+    transition: none;
+  }
+  .face {
+    transition: opacity 0.15s ease;
+  }
+  .back {
+    transform: none;
+    opacity: 0;
+  }
+  .rowWrap:hover .front,
+  .rowWrap:focus-within .front {
+    opacity: 0;
+  }
+  .rowWrap:hover .back,
+  .rowWrap:focus-within .back {
+    opacity: 1;
+  }
 }
 
 /* Inline title editor (replaces the row button while renaming) */
@@ -143,7 +204,7 @@
   font-size: 14px;
 }
 
-/* Rename / remove controls — hidden until the row is hovered or focused. */
+/* Rename / remove controls, on the back of the flip card. */
 .rowAction {
   display: flex;
   align-items: center;
@@ -156,29 +217,17 @@
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.12s ease, color 0.12s ease, background 0.12s ease;
-}
-
-.rowWrap:hover .rowAction,
-.rowWrap:focus-within .rowAction {
-  opacity: 1;
-}
-
-.rowDelete {
-  margin-right: 4px;
+  transition: color 0.12s ease, background 0.12s ease;
 }
 
 .rowEdit:hover,
 .rowEdit:focus-visible {
-  opacity: 1;
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .rowDelete:hover,
 .rowDelete:focus-visible {
-  opacity: 1;
   color: #dc2626;
   background: color-mix(in srgb, #dc2626 12%, transparent);
 }

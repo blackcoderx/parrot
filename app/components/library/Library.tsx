@@ -153,49 +153,59 @@ function LibraryRow({ doc, onOpen, onRename, onRemove }: RowProps) {
       ) : (
         <button className={styles.row} onClick={onOpen}>
           <span className={styles.rowTitle}>{doc.title}</span>
-          {doc.page_count !== null && (
-            <span className={styles.rowMeta} title="Last page read">
-              p. {doc.last_page} / {doc.page_count}
-            </span>
-          )}
         </button>
       )}
 
+      {/* One slot at the right edge: the reading progress, which flips over on hover (or
+          keyboard focus) like a card to reveal the rename / remove actions on its back. */}
       {!editing && (
-        <button
-          className={`${styles.rowAction} ${styles.rowEdit}`}
-          onClick={startEditing}
-          aria-label={`Rename ${doc.title}`}
-          title="Rename"
-        >
-          <PencilIcon />
-        </button>
-      )}
+        <div className={styles.rowSide}>
+          <div className={styles.flip}>
+            <span className={`${styles.face} ${styles.front}`} title="Last page read">
+              {doc.page_count !== null && `p. ${doc.last_page} / ${doc.page_count}`}
+            </span>
 
-      <AlertDialog.Root>
-        <AlertDialog.Trigger
-          className={`${styles.rowAction} ${styles.rowDelete}`}
-          aria-label={`Remove ${doc.title}`}
-          title="Remove"
-        >
-          <TrashIcon />
-        </AlertDialog.Trigger>
-        <AlertDialog.Portal>
-          <AlertDialog.Backdrop className={styles.dialogBackdrop} />
-          <AlertDialog.Popup className={styles.dialogPopup}>
-            <AlertDialog.Title className={styles.dialogTitle}>Remove “{doc.title}”?</AlertDialog.Title>
-            <AlertDialog.Description className={styles.dialogDesc}>
-              This permanently deletes the file along with its highlights and AI conversations.
-            </AlertDialog.Description>
-            <div className={styles.dialogActions}>
-              <AlertDialog.Close className={styles.dialogCancel}>Cancel</AlertDialog.Close>
-              <AlertDialog.Close className={styles.dialogConfirm} onClick={onRemove}>
-                Remove
-              </AlertDialog.Close>
+            <div className={`${styles.face} ${styles.back}`}>
+              <button
+                className={`${styles.rowAction} ${styles.rowEdit}`}
+                onClick={startEditing}
+                aria-label={`Rename ${doc.title}`}
+                title="Rename"
+              >
+                <PencilIcon />
+              </button>
+
+              <AlertDialog.Root>
+                <AlertDialog.Trigger
+                  className={`${styles.rowAction} ${styles.rowDelete}`}
+                  aria-label={`Remove ${doc.title}`}
+                  title="Remove"
+                >
+                  <TrashIcon />
+                </AlertDialog.Trigger>
+                <AlertDialog.Portal>
+                  <AlertDialog.Backdrop className={styles.dialogBackdrop} />
+                  <AlertDialog.Popup className={styles.dialogPopup}>
+                    <AlertDialog.Title className={styles.dialogTitle}>
+                      Remove “{doc.title}”?
+                    </AlertDialog.Title>
+                    <AlertDialog.Description className={styles.dialogDesc}>
+                      This permanently deletes the file along with its highlights and AI
+                      conversations.
+                    </AlertDialog.Description>
+                    <div className={styles.dialogActions}>
+                      <AlertDialog.Close className={styles.dialogCancel}>Cancel</AlertDialog.Close>
+                      <AlertDialog.Close className={styles.dialogConfirm} onClick={onRemove}>
+                        Remove
+                      </AlertDialog.Close>
+                    </div>
+                  </AlertDialog.Popup>
+                </AlertDialog.Portal>
+              </AlertDialog.Root>
             </div>
-          </AlertDialog.Popup>
-        </AlertDialog.Portal>
-      </AlertDialog.Root>
+          </div>
+        </div>
+      )}
     </li>
   );
 }
