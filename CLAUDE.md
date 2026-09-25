@@ -79,7 +79,9 @@ renders replies as Markdown + LaTeX (`react-markdown` + `remark-math`/`rehype-ka
 `NoteEditor` are top-layer floating windows (Popover API `popover="manual"`), `position: fixed`,
 draggable by the header, resizable, and viewport-clamped — all via the shared `useFloatingWindow`
 hook. Saving a thread (`saveThread` in `db.ts`) writes the anchor highlight, chat and messages in one
-transaction.
+transaction. The selection menu's Flashcard item calls `/api/flashcards/generate`, which drafts one
+card with `generateText` + `Output.object` (a `jsonSchema`, no zod) and saves nothing: the draft
+opens pre-filled in the flashcards form and is saved through the normal `POST /api/flashcards`.
 
 **Styling.** Base UI headless primitives styled with **plain CSS Modules — no Tailwind.** Each
 reader component has its own `*.module.css`; page-level overlays share `Reader.module.css`, and the

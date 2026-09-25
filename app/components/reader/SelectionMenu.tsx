@@ -9,11 +9,20 @@ interface Props {
   onHighlight: () => void;
   onAsk: () => void;
   onNote: () => void;
+  onFlashcard: () => void;
   onClose: () => void;
 }
 
-/** Popup shown over a text selection: Copy / Highlight / Ask Parrot / Note. */
-export function SelectionMenu({ anchorRect, onCopy, onHighlight, onAsk, onNote, onClose }: Props) {
+/** Popup shown over a text selection: Copy / Highlight / Ask Parrot / Note / Flashcard. */
+export function SelectionMenu({
+  anchorRect,
+  onCopy,
+  onHighlight,
+  onAsk,
+  onNote,
+  onFlashcard,
+  onClose,
+}: Props) {
   const open = anchorRect !== null;
 
   return (
@@ -41,6 +50,9 @@ export function SelectionMenu({ anchorRect, onCopy, onHighlight, onAsk, onNote, 
             </button>
             <button className={styles.menuItem} onClick={onNote}>
               Note
+            </button>
+            <button className={styles.menuItem} onClick={onFlashcard}>
+              Flashcard
             </button>
           </Popover.Popup>
         </Popover.Positioner>

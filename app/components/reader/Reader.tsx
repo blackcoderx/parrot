@@ -267,6 +267,14 @@ export function Reader({ documentId, title, initialPage }: Props) {
     clearSelection();
   }
 
+  // Have the AI draft a flashcard from a text selection (reviewed in the form before saving).
+  function handleFlashcard() {
+    if (!selection) return;
+    setFlashView({ kind: "generate", text: selection.text, nonce: Date.now() });
+    setFlashOpen(true);
+    clearSelection();
+  }
+
   // Add a note from a note-pen region.
   const handleNoteRegion = useCallback((page: number, rect: NormRect, anchorRect: DOMRect) => {
     setNoteMode(false);
@@ -375,6 +383,7 @@ export function Reader({ documentId, title, initialPage }: Props) {
         onHighlight={handleHighlight}
         onAsk={handleAsk}
         onNote={handleNote}
+        onFlashcard={handleFlashcard}
         onClose={clearSelection}
       />
 

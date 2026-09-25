@@ -10,8 +10,21 @@ import styles from "./Flashcards.module.css";
 /** Gap between the toolbar and the popover (also used to aim the open animation). */
 const SIDE_OFFSET = 12;
 
-/** What the flashcards popover is showing. */
-export type FlashView = { kind: "review" } | { kind: "form"; editing: Flashcard | null };
+/** An unsaved card, e.g. one the AI drafted from a selection. */
+export interface CardDraft {
+  question: string;
+  hint: string | null;
+  answer: string;
+}
+
+/**
+ * What the flashcards popover is showing. `generate` drafts a card from selected text (`nonce`
+ * re-runs it for the same text); the draft then opens in the form for review.
+ */
+export type FlashView =
+  | { kind: "review" }
+  | { kind: "form"; editing: Flashcard | null; draft?: CardDraft }
+  | { kind: "generate"; text: string; nonce: number };
 
 interface Props {
   documentId: string;
@@ -48,7 +61,8 @@ export function Flashcards({
     (popup: HTMLDivElement | null) => {
       const toolbar = toolbarRef.current;
       if (!popup || !toolbar) return;
-      const label = view.kind === "form" && !view.editing ? "New flashcard" : "Flashcards";
+      const isNew = view.kind === "generate" || (view.kind === "form" && !view.editing);
+      const label = isNew ? "New flashcard" : "Flashcards";
       const button = toolbar.querySelector(`[aria-label="${label}"]`);
       if (!button) return;
       const bar = toolbar.getBoundingClientRect();
@@ -111,7 +125,11 @@ export function Flashcards({
   }
 
   const title =
-    view.kind === "form" ? (view.editing ? "Edit flashcard" : "New flashcard") : "Flashcards";
+    view.kind === "review"
+      ? "Flashcards"
+      : view.kind === "form" && view.editing
+        ? "Edit flashcard"
+        : "New flashcard";
 
   return (
     <Popover.Root
@@ -159,11 +177,20 @@ export function Flashcards({
               </span>
             </div>
 
-            {view.kind === "form" ? (
+            {view.kind === "generate" ? (
+              <GenerateView
+                key={view.nonce}
+                documentId={documentId}
+                text={view.text}
+                onDraft={(draft) => onViewChange({ kind: "form", editing: null, draft })}
+                onWriteManually={() => onViewChange({ kind: "form", editing: null })}
+              />
+            ) : view.kind === "form" ? (
               <CardForm
-                key={view.editing?.id ?? "new"}
+                key={view.editing?.id ?? (view.draft ? "draft" : "new")}
                 documentId={documentId}
                 editing={view.editing}
+                draft={view.draft}
                 onCancel={() => onViewChange({ kind: "review" })}
                 onSaved={handleSaved}
               />
@@ -297,21 +324,87 @@ function CardView({ card, direction }: { card: Flashcard; direction: "next" | "p
   );
 }
 
-/** Create a new card, or edit `editing`. */
+/** Ask the AI to draft a card from `text`, then hand the draft on for review. */
+function GenerateView({
+  documentId,
+  text,
+  onDraft,
+  onWriteManually,
+}: {
+  documentId: string;
+  text: string;
+  onDraft: (draft: CardDraft) => void;
+  onWriteManually: () => void;
+}) {
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  // Read through a ref so a re-rendered parent doesn't restart the request.
+  const onDraftRef = useRef(onDraft);
+  useEffect(() => {
+    onDraftRef.current = onDraft;
+  });
+
+  useEffect(() => {
+    // Aborted when the popover closes or another selection replaces this one.
+    const controller = new AbortController();
+    fetch("/api/flashcards/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ documentId, text }),
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(data?.error ?? "Couldn't write a card from this selection.");
+        onDraftRef.current(data as CardDraft);
+      })
+      .catch((err: unknown) => {
+        if (controller.signal.aborted) return;
+        setError(err instanceof Error ? err.message : "Couldn't write a card from this selection.");
+      });
+    return () => controller.abort();
+  }, [documentId, text, attempt]);
+
+  if (!error) return <p className={styles.flashEmpty}>Writing a card…</p>;
+  return (
+    <div className={styles.flashEmpty}>
+      <p>{error}</p>
+      <div className={styles.flashFormActions}>
+        <button className={buttons.askSave} onClick={onWriteManually}>
+          Write it myself
+        </button>
+        <button
+          className={buttons.askSend}
+          onClick={() => {
+            setError(null);
+            setAttempt((n) => n + 1);
+          }}
+        >
+          Try again
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Create a new card (optionally starting from `draft`), or edit `editing`. */
 function CardForm({
   documentId,
   editing,
+  draft,
   onCancel,
   onSaved,
 }: {
   documentId: string;
   editing: Flashcard | null;
+  draft?: CardDraft;
   onCancel: () => void;
   onSaved: (card: Flashcard, isNew: boolean) => void;
 }) {
-  const [question, setQuestion] = useState(editing?.question ?? "");
-  const [hint, setHint] = useState(editing?.hint ?? "");
-  const [answer, setAnswer] = useState(editing?.answer ?? "");
+  const initial = editing ?? draft;
+  const [question, setQuestion] = useState(initial?.question ?? "");
+  const [hint, setHint] = useState(initial?.hint ?? "");
+  const [answer, setAnswer] = useState(initial?.answer ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
