@@ -11,6 +11,8 @@ import { NoteEditor, type NoteAnchor } from "./NoteEditor";
 import { OutlinePanel } from "./OutlinePanel";
 import { Flashcards, type FlashView } from "./Flashcards";
 import { headingY, loadOutline, type OutlineNode, type PdfDocument } from "./outline";
+import { extractText, type PageText } from "./find";
+import { FindBar } from "./FindBar";
 import { readSelection, type SelectionInfo } from "./selection";
 import { HIGHLIGHT_COLORS, type Highlight, type NormRect } from "./types";
 import styles from "./Reader.module.css";
@@ -60,11 +62,15 @@ export function Reader({ documentId, title, initialPage }: Props) {
   const [outline, setOutline] = useState<OutlineNode[] | null>(null);
   const [flashOpen, setFlashOpen] = useState(false);
   const [flashView, setFlashView] = useState<FlashView>({ kind: "review" });
+  const [findOpen, setFindOpen] = useState(false);
+  const [findQuery, setFindQuery] = useState("");
+  const [findFocusKey, setFindFocusKey] = useState(0);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const cachedOutline = useRef<Promise<OutlineNode[] | null> | null>(null);
   const pdfRef = useRef<PdfDocument | null>(null);
   const pageRef = useRef(initialPage);
   const patchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const textCache = useRef<Promise<PageText> | null>(null);
 
   const loadHighlights = useCallback(() => {
     getJson<Highlight[]>(`/api/highlights?documentId=${documentId}`)
@@ -99,8 +105,24 @@ export function Reader({ documentId, title, initialPage }: Props) {
     setFlashOpen(true);
   }, [flashOpen, flashView]);
 
+  // Find in document. The text is extracted once (on first open) and reused afterwards.
+  const openFind = useCallback(() => {
+    setFindOpen(true);
+    setFindFocusKey((k) => k + 1); // (re)focus the input, also when the bar is already open
+  }, []);
+  const closeFind = useCallback(() => {
+    setFindOpen(false);
+    setFindQuery("");
+  }, []);
+  const loadText = useCallback((onProgress: (done: number, total: number) => void) => {
+    // Only opened once the PDF has loaded (see the Ctrl/⌘+F shortcut), so pdfRef is set.
+    textCache.current ??= extractText(pdfRef.current!, onProgress);
+    return textCache.current;
+  }, []);
+
   // Reader shortcuts, all skipped while typing in a field:
   //   Ctrl/⌘+B  contents sidebar ("bold" in text fields, hence the skip)
+  //   Ctrl/⌘+F  find in document (the browser's find can't see unrendered pages)
   //   F         flashcards
   //   Shift+F   new flashcard
   useEffect(() => {
@@ -109,9 +131,14 @@ export function Reader({ documentId, title, initialPage }: Props) {
       const target = e.target instanceof Element ? e.target : null;
       if (target?.closest("input, textarea, [contenteditable]:not([contenteditable='false'])")) return;
       const key = e.key.toLowerCase();
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && key === "b") {
+      const mod = (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey;
+      if (mod && key === "b") {
         e.preventDefault();
         toggleOutline();
+      } else if (mod && key === "f") {
+        if (!pdfRef.current) return; // not loaded yet — leave the browser's find alone
+        e.preventDefault();
+        openFind();
       } else if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat && key === "f") {
         e.preventDefault();
         if (e.shiftKey) newFlashcard();
@@ -120,7 +147,7 @@ export function Reader({ documentId, title, initialPage }: Props) {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [toggleOutline, toggleFlashcards, newFlashcard]);
+  }, [toggleOutline, toggleFlashcards, newFlashcard, openFind]);
 
   // The outline is cached server-side after the first open; start fetching it right away
   // so the sidebar can fill before the PDF has even finished loading.
@@ -327,6 +354,7 @@ export function Reader({ documentId, title, initialPage }: Props) {
             highlights={highlights}
             initialPage={initialPage}
             scrollToPage={jump}
+            findQuery={findQuery}
             aiMode={aiMode}
             noteMode={noteMode}
             onNumPages={handleNumPages}
@@ -368,6 +396,16 @@ export function Reader({ documentId, title, initialPage }: Props) {
           anchor={note.anchor}
           onClose={() => setNote(null)}
           onSaved={loadHighlights}
+        />
+      )}
+
+      {findOpen && (
+        <FindBar
+          loadText={loadText}
+          focusKey={findFocusKey}
+          onQueryChange={setFindQuery}
+          onJump={jumpTo}
+          onClose={closeFind}
         />
       )}
 

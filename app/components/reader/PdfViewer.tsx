@@ -8,6 +8,7 @@ import { HighlightLayer } from "./HighlightLayer";
 import { AiPenLayer } from "./AiPenLayer";
 import { NotePenLayer } from "./NotePenLayer";
 import type { Highlight, NormRect } from "./types";
+import { markMatches } from "./find";
 import type { PdfDocument } from "./outline";
 import styles from "./Reader.module.css";
 
@@ -25,6 +26,8 @@ interface Props {
   initialPage: number;
   /** `y` (0..1 down the page) scrolls to a spot within the page instead of its top. */
   scrollToPage: { page: number; y?: number | null; nonce: number } | null;
+  /** Current find-in-document query; matches in rendered pages are wrapped in <mark>. */
+  findQuery: string;
   aiMode: boolean;
   noteMode: boolean;
   onNumPages: (n: number) => void;
@@ -43,6 +46,7 @@ export const PdfViewer = memo(function PdfViewer({
   highlights,
   initialPage,
   scrollToPage,
+  findQuery,
   aiMode,
   noteMode,
   onNumPages,
@@ -77,6 +81,12 @@ export const PdfViewer = memo(function PdfViewer({
     }
     return map;
   }, [highlights]);
+
+  // Memoized per query: a new renderer makes react-pdf redraw every mounted text layer.
+  const textRenderer = useMemo(
+    () => (findQuery.trim() ? markMatches(findQuery) : undefined),
+    [findQuery],
+  );
 
   // Mount pages within ~1.5 screens of the viewport; unmount (freeing canvases) beyond that.
   useEffect(() => {
@@ -210,6 +220,7 @@ export const PdfViewer = memo(function PdfViewer({
                     pageNumber={pageNumber}
                     scale={scale}
                     renderTextLayer
+                    customTextRenderer={textRenderer}
                     loading=""
                     onLoadSuccess={(page) =>
                       handlePageLoad(pageNumber, page.originalWidth, page.originalHeight)

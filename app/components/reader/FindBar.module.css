@@ -1,0 +1,74 @@
+/* Find-in-document bar — floats at the top right, just under the reader header. */
+.findBar {
+  position: fixed;
+  top: calc(var(--reader-header-h) + 8px);
+  right: 16px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 4px 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--background);
+  box-shadow: 0 8px 30px rgba(2, 1, 0, 0.12);
+  animation: findIn 0.15s ease-out;
+}
+
+@keyframes findIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .findBar {
+    animation: none;
+  }
+}
+
+.findInput {
+  width: 200px;
+  padding: 6px 4px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  font-size: 13px;
+}
+
+.findStatus {
+  min-width: 64px;
+  padding: 0 6px;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.findBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.findBtn:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+.findBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

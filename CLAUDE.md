@@ -61,7 +61,12 @@ as `pdfjs.GlobalWorkerOptions.workerSrc`. `Reader.tsx` orchestrates the page ove
 (`HighlightLayer`, `AiPenLayer`, `NotePenLayer` — the pens share `useDragBox`), the text-selection
 `SelectionMenu` (Copy / Highlight / Ask Parrot / Note), and the `AskParrot` / `NoteEditor` windows.
 `PdfViewer` and `HighlightLayer` are memoized, so keep the callbacks `Reader` passes them stable
-(`useCallback`) or every scroll re-renders every page.
+(`useCallback`) or every scroll re-renders every page. All in-document navigation (outline, page
+box, Notes tab, find) goes through `Reader`'s `jumpTo(page, y?)`. The sidebar (`OutlinePanel`) has
+Contents and Notes tabs (`AnnotationList`). Because pages are virtualized the browser's find can't
+see them, so Ctrl/⌘+F opens `FindBar`: `find.ts` extracts every page's text once (cached per
+session) and marks matches via react-pdf's `customTextRenderer`, whose output is parsed as HTML —
+keep it escaped. `deleteHighlight` also deletes the anchored chat (the FK is `ON DELETE SET NULL`).
 
 **AI harness (Vercel AI SDK, `ai@7`).** `app/lib/providers.ts` is a registry of 9 providers backed
 by 4 SDK packages (`@ai-sdk/anthropic`, `@ai-sdk/openai`, `@ai-sdk/google`, and

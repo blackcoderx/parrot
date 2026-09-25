@@ -210,3 +210,10 @@
   border-radius: 2px;
   box-shadow: none !important;
 }
+
+/* Find-in-document matches, marked inside the (transparent) pdf.js text layer */
+.pageWrap :global(.textLayer) mark {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: transparent;
+  border-radius: 2px;
+}
