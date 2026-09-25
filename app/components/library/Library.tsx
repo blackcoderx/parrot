@@ -9,7 +9,7 @@ import { TrashIcon } from "@/components/TrashIcon";
 import type { DocumentRow } from "@/types";
 import styles from "./Library.module.css";
 
-export type LibraryDoc = Pick<DocumentRow, "id" | "title">;
+export type LibraryDoc = Pick<DocumentRow, "id" | "title" | "last_page" | "page_count">;
 
 /** The home screen: open a new PDF, or reopen/remove a recent one. */
 export function Library({ initialDocs }: { initialDocs: LibraryDoc[] }) {
@@ -85,6 +85,11 @@ export function Library({ initialDocs }: { initialDocs: LibraryDoc[] }) {
                     onClick={() => router.push(`/read/${doc.id}`)}
                   >
                     <span className={styles.rowTitle}>{doc.title}</span>
+                    {doc.page_count !== null && (
+                      <span className={styles.rowMeta} title="Last page read">
+                        p. {doc.last_page} / {doc.page_count}
+                      </span>
+                    )}
                   </button>
 
                   <AlertDialog.Root>

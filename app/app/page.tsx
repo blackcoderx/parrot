@@ -5,6 +5,11 @@ import { Library } from "@/components/library/Library";
 export const dynamic = "force-dynamic";
 
 export default function Home() {
-  const docs = listDocuments().map(({ id, title }) => ({ id, title }));
+  const docs = listDocuments().map(({ id, title, last_page, page_count }) => ({
+    id,
+    title,
+    last_page,
+    page_count,
+  }));
   return <Library initialDocs={docs} />;
 }

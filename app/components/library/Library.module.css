@@ -119,6 +119,15 @@
   white-space: nowrap;
 }
 
+/* Reading progress, e.g. "p. 4 / 15" */
+.rowMeta {
+  flex-shrink: 0;
+  margin-left: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Remove control — hidden until the row is hovered or focused. */
 .rowDelete {
   display: flex;
