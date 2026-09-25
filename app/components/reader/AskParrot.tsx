@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { getJson, sendJson } from "@/components/api";
+import { TrashIcon } from "@/components/TrashIcon";
 import type { NormRect } from "./types";
 import Markdown from "./Markdown";
 import { useFloatingWindow } from "./useFloatingWindow";
@@ -67,11 +68,14 @@ function useCyclingWord(active: boolean, words: string[]): string {
 export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSaved }: Props) {
   const [input, setInput] = useState("");
   const [saved, setSaved] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   // The highlight this thread is anchored to once saved. Set from the first
   // save's response so re-saves upsert in place instead of creating duplicates.
   const [savedHighlightId, setSavedHighlightId] = useState<string | null>(
     anchor.kind === "existing" ? anchor.highlightId : null,
   );
+  // Once anchored, re-saves upsert in place and the thread can be deleted.
+  const anchoredId = anchor.kind === "existing" ? anchor.highlightId : savedHighlightId;
   const { panelRef, style, headerProps } = useFloatingWindow(anchorRect, onClose);
   const imageSent = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -174,11 +178,9 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
 
     // Once anchored to a highlight, re-saves go through the upsert path (the
     // server reuses the chat and replaces its messages) — no duplicate rows.
-    const existingId = anchor.kind === "existing" ? anchor.highlightId : savedHighlightId;
-
     // Not anchored yet: send the highlight to create alongside the thread.
     let highlight;
-    if (!existingId) {
+    if (!anchoredId) {
       if (anchor.kind === "existing") return; // always has an id, so this is unreachable
       // Chat highlights render from the accent via CSS; this is only a fallback color.
       const color =
@@ -191,7 +193,7 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
 
     const res = await sendJson("/api/chats", "POST", {
       documentId,
-      highlightId: existingId ?? undefined,
+      highlightId: anchoredId ?? undefined,
       highlight,
       messages: simplified,
     });
@@ -201,6 +203,15 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
       setSaved(true);
       onSaved();
     }
+  }
+
+  // Delete the thread along with its highlight (the server removes the chat too).
+  async function removeThread() {
+    if (!anchoredId) return;
+    const res = await fetch(`/api/highlights/${anchoredId}`, { method: "DELETE" }).catch(() => null);
+    if (!res?.ok) return setConfirmDelete(false);
+    onSaved();
+    onClose();
   }
 
   const regionImage = anchor.kind === "region" ? anchor.image : null;
@@ -222,9 +233,21 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
     >
       <div className={styles.askHeader} {...headerProps}>
         <span className={styles.askTitle}>Ask Parrot</span>
-        <button className={buttons.askClose} onClick={onClose} aria-label="Close" title="Close (Esc)">
-          ×
-        </button>
+        <span className={styles.askHeaderActions}>
+          {anchoredId && (
+            <button
+              className={styles.askIconBtn}
+              onClick={() => setConfirmDelete(true)}
+              aria-label="Delete thread"
+              title="Delete thread"
+            >
+              <TrashIcon size={14} />
+            </button>
+          )}
+          <button className={buttons.askClose} onClick={onClose} aria-label="Close" title="Close (Esc)">
+            ×
+          </button>
+        </span>
       </div>
 
       {regionImage && (
@@ -267,25 +290,42 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
         {error && <div className={styles.askError}>{error.message}</div>}
       </div>
 
-      <div className={styles.askInputRow}>
-        <input
-          className={styles.askInput}
-          value={input}
-          placeholder="Type a message…"
-          autoFocus
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            // Plain Enter sends; Ctrl/Cmd+Enter bubbles to the window save handler.
-            if (e.key === "Enter" && !e.metaKey && !e.ctrlKey) submit();
-          }}
-        />
-        <button className={buttons.askSend} onClick={submit} disabled={busy}>
-          {busy ? "…" : "Send"}
-        </button>
-        <button className={buttons.askSave} onClick={save} disabled={!canSave} title="Save (Ctrl+Enter)">
-          {saved ? "Saved" : "Save"}
-        </button>
-      </div>
+      {confirmDelete ? (
+        <div className={styles.askInputRow}>
+          <span className={styles.askConfirm}>Delete this thread and its highlight?</span>
+          <button className={buttons.askSave} onClick={() => setConfirmDelete(false)} autoFocus>
+            Cancel
+          </button>
+          <button className={styles.askDanger} onClick={removeThread}>
+            Delete
+          </button>
+        </div>
+      ) : (
+        <div className={styles.askInputRow}>
+          <input
+            className={styles.askInput}
+            value={input}
+            placeholder="Type a message…"
+            autoFocus
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              // Plain Enter sends; Ctrl/Cmd+Enter bubbles to the window save handler.
+              if (e.key === "Enter" && !e.metaKey && !e.ctrlKey) submit();
+            }}
+          />
+          <button className={buttons.askSend} onClick={submit} disabled={busy}>
+            {busy ? "…" : "Send"}
+          </button>
+          <button
+            className={buttons.askSave}
+            onClick={save}
+            disabled={!canSave}
+            title="Save (Ctrl+Enter)"
+          >
+            {saved ? "Saved" : "Save"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

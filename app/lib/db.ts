@@ -93,6 +93,10 @@ function createDb(): Database.Database {
   );
   if (!hasNote) db.exec("ALTER TABLE highlights ADD COLUMN note TEXT");
 
+  // Threads orphaned by highlight deletes before deleteHighlight removed them too. Every
+  // saved thread has an anchor, so an anchorless chat can never be reopened.
+  db.exec("DELETE FROM chats WHERE highlight_id IS NULL");
+
   return db;
 }
 
@@ -284,8 +288,13 @@ export function updateHighlightNote(id: string, note: string): boolean {
   return info.changes > 0;
 }
 
+/** Delete a highlight and any thread anchored to it (messages cascade from the chat). */
 export function deleteHighlight(id: string): void {
-  db.prepare("DELETE FROM highlights WHERE id = ?").run(id);
+  db.transaction(() => {
+    // chats.highlight_id is ON DELETE SET NULL, which would leave the thread unreachable.
+    db.prepare("DELETE FROM chats WHERE highlight_id = ?").run(id);
+    db.prepare("DELETE FROM highlights WHERE id = ?").run(id);
+  })();
 }
 
 // ---------------------------------------------------------------------------
