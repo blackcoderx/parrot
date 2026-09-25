@@ -128,15 +128,29 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Remove control — hidden until the row is hovered or focused. */
-.rowDelete {
+/* Inline title editor (replaces the row button while renaming) */
+.rowInput {
+  flex: 1;
+  min-width: 0;
+  margin: 4px 4px 4px 2px;
+  padding: 5px 6px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  outline: none;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 14px;
+}
+
+/* Rename / remove controls — hidden until the row is hovered or focused. */
+.rowAction {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   width: 32px;
   height: 32px;
-  margin-right: 4px;
   border: none;
   border-radius: 6px;
   background: transparent;
@@ -146,9 +160,20 @@
   transition: opacity 0.12s ease, color 0.12s ease, background 0.12s ease;
 }
 
-.rowWrap:hover .rowDelete,
-.rowWrap:focus-within .rowDelete {
+.rowWrap:hover .rowAction,
+.rowWrap:focus-within .rowAction {
   opacity: 1;
+}
+
+.rowDelete {
+  margin-right: 4px;
+}
+
+.rowEdit:hover,
+.rowEdit:focus-visible {
+  opacity: 1;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .rowDelete:hover,

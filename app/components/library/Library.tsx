@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertDialog } from "@base-ui-components/react/alert-dialog";
-import { getJson } from "@/components/api";
+import { getJson, sendJson } from "@/components/api";
 import { SettingsPopover } from "@/components/settings/SettingsPopover";
 import { TrashIcon } from "@/components/TrashIcon";
 import type { DocumentRow } from "@/types";
@@ -31,6 +31,15 @@ export function Library({ initialDocs }: { initialDocs: LibraryDoc[] }) {
         .then(setRecent)
         .catch(() => {});
     }
+  }
+
+  async function rename(id: string, title: string) {
+    const previous = recent.find((d) => d.id === id)?.title;
+    const setTitle = (t: string) =>
+      setRecent((prev) => prev.map((d) => (d.id === id ? { ...d, title: t } : d)));
+    setTitle(title); // optimistic
+    const res = await sendJson(`/api/documents/${id}`, "PATCH", { title }).catch(() => null);
+    if (!res?.ok && previous !== undefined) setTitle(previous);
   }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -79,51 +88,13 @@ export function Library({ initialDocs }: { initialDocs: LibraryDoc[] }) {
           ) : (
             <ul className={styles.list}>
               {recent.map((doc) => (
-                <li key={doc.id} className={styles.rowWrap}>
-                  <button
-                    className={styles.row}
-                    onClick={() => router.push(`/read/${doc.id}`)}
-                  >
-                    <span className={styles.rowTitle}>{doc.title}</span>
-                    {doc.page_count !== null && (
-                      <span className={styles.rowMeta} title="Last page read">
-                        p. {doc.last_page} / {doc.page_count}
-                      </span>
-                    )}
-                  </button>
-
-                  <AlertDialog.Root>
-                    <AlertDialog.Trigger
-                      className={styles.rowDelete}
-                      aria-label={`Remove ${doc.title}`}
-                    >
-                      <TrashIcon />
-                    </AlertDialog.Trigger>
-                    <AlertDialog.Portal>
-                      <AlertDialog.Backdrop className={styles.dialogBackdrop} />
-                      <AlertDialog.Popup className={styles.dialogPopup}>
-                        <AlertDialog.Title className={styles.dialogTitle}>
-                          Remove “{doc.title}”?
-                        </AlertDialog.Title>
-                        <AlertDialog.Description className={styles.dialogDesc}>
-                          This permanently deletes the file along with its highlights and AI
-                          conversations.
-                        </AlertDialog.Description>
-                        <div className={styles.dialogActions}>
-                          <AlertDialog.Close className={styles.dialogCancel}>
-                            Cancel
-                          </AlertDialog.Close>
-                          <AlertDialog.Close
-                            className={styles.dialogConfirm}
-                            onClick={() => remove(doc.id)}
-                          >
-                            Remove
-                          </AlertDialog.Close>
-                        </div>
-                      </AlertDialog.Popup>
-                    </AlertDialog.Portal>
-                  </AlertDialog.Root>
-                </li>
+                <LibraryRow
+                  key={doc.id}
+                  doc={doc}
+                  onOpen={() => router.push(`/read/${doc.id}`)}
+                  onRename={(title) => rename(doc.id, title)}
+                  onRemove={() => remove(doc.id)}
+                />
               ))}
             </ul>
           )}
@@ -134,5 +105,111 @@ export function Library({ initialDocs }: { initialDocs: LibraryDoc[] }) {
         <SettingsPopover />
       </div>
     </div>
+  );
+}
+
+interface RowProps {
+  doc: LibraryDoc;
+  onOpen: () => void;
+  onRename: (title: string) => void;
+  onRemove: () => void;
+}
+
+/** One recent document: open it, rename it inline, or remove it (after confirming). */
+function LibraryRow({ doc, onOpen, onRename, onRemove }: RowProps) {
+  const [editing, setEditing] = useState(false);
+  // Enter/Escape end the edit and unmount the input, which may also fire blur — commit once.
+  const finished = useRef(false);
+
+  function startEditing() {
+    finished.current = false;
+    setEditing(true);
+  }
+
+  function finish(value: string | null) {
+    if (finished.current) return;
+    finished.current = true;
+    setEditing(false);
+    const title = value?.trim();
+    if (title && title !== doc.title) onRename(title);
+  }
+
+  return (
+    <li className={styles.rowWrap}>
+      {editing ? (
+        <input
+          className={styles.rowInput}
+          defaultValue={doc.title}
+          maxLength={200}
+          aria-label="Document title"
+          autoFocus
+          onFocus={(e) => e.currentTarget.select()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") finish(e.currentTarget.value);
+            else if (e.key === "Escape") finish(null);
+          }}
+          onBlur={(e) => finish(e.currentTarget.value)}
+        />
+      ) : (
+        <button className={styles.row} onClick={onOpen}>
+          <span className={styles.rowTitle}>{doc.title}</span>
+          {doc.page_count !== null && (
+            <span className={styles.rowMeta} title="Last page read">
+              p. {doc.last_page} / {doc.page_count}
+            </span>
+          )}
+        </button>
+      )}
+
+      {!editing && (
+        <button
+          className={`${styles.rowAction} ${styles.rowEdit}`}
+          onClick={startEditing}
+          aria-label={`Rename ${doc.title}`}
+          title="Rename"
+        >
+          <PencilIcon />
+        </button>
+      )}
+
+      <AlertDialog.Root>
+        <AlertDialog.Trigger
+          className={`${styles.rowAction} ${styles.rowDelete}`}
+          aria-label={`Remove ${doc.title}`}
+          title="Remove"
+        >
+          <TrashIcon />
+        </AlertDialog.Trigger>
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop className={styles.dialogBackdrop} />
+          <AlertDialog.Popup className={styles.dialogPopup}>
+            <AlertDialog.Title className={styles.dialogTitle}>Remove “{doc.title}”?</AlertDialog.Title>
+            <AlertDialog.Description className={styles.dialogDesc}>
+              This permanently deletes the file along with its highlights and AI conversations.
+            </AlertDialog.Description>
+            <div className={styles.dialogActions}>
+              <AlertDialog.Close className={styles.dialogCancel}>Cancel</AlertDialog.Close>
+              <AlertDialog.Close className={styles.dialogConfirm} onClick={onRemove}>
+                Remove
+              </AlertDialog.Close>
+            </div>
+          </AlertDialog.Popup>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
+    </li>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M4 20h4L19 9a2.83 2.83 0 0 0-4-4L4 16v4zM13.5 6.5l4 4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }

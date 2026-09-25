@@ -155,6 +155,13 @@ export function touchDocument(
     }) as DocumentRow | undefined;
 }
 
+/** Change a document's title. Leaves opened_at alone so renaming doesn't reorder the library. */
+export function renameDocument(id: string, title: string): DocumentRow | undefined {
+  return db.prepare("UPDATE documents SET title = ? WHERE id = ? RETURNING *").get(title, id) as
+    | DocumentRow
+    | undefined;
+}
+
 export function deleteDocument(id: string): void {
   db.prepare("DELETE FROM documents WHERE id = ?").run(id);
 }

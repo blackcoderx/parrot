@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getDocument, touchDocument, deleteDocument } from "@/lib/db";
+import { getDocument, touchDocument, deleteDocument, renameDocument } from "@/lib/db";
 import { invalidJson, readJson } from "@/lib/http";
 import { deletePdf } from "@/lib/storage";
 
@@ -11,11 +11,23 @@ export async function GET(_req: NextRequest, ctx: RouteContext<"/api/documents/[
   return Response.json(doc);
 }
 
-// PATCH /api/documents/[id] — update reading progress ({ last_page?, page_count? }).
+const MAX_TITLE = 200;
+
+// PATCH /api/documents/[id] — rename ({ title }) or update reading progress
+// ({ last_page?, page_count? }). A rename doesn't count as opening the document.
 export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/documents/[id]">) {
   const { id } = await ctx.params;
-  const body = await readJson<{ last_page: number; page_count: number }>(request);
+  const body = await readJson<{ title: string; last_page: number; page_count: number }>(request);
   if (!body) return invalidJson();
+
+  if (body.title !== undefined) {
+    const title = typeof body.title === "string" ? body.title.trim() : "";
+    if (!title) return Response.json({ error: "title must be non-empty text" }, { status: 400 });
+    if (title.length > MAX_TITLE) return Response.json({ error: "title is too long" }, { status: 400 });
+    const doc = renameDocument(id, title);
+    if (!doc) return Response.json({ error: "Not found" }, { status: 404 });
+    return Response.json(doc);
+  }
 
   const pageNumber = (n: unknown) => (Number.isInteger(n) && (n as number) > 0 ? (n as number) : undefined);
   const doc = touchDocument(id, {
