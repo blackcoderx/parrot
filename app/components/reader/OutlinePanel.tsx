@@ -1,18 +1,42 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AnnotationList } from "./AnnotationList";
 import { activeOutlineId, ancestorIds, type OutlineNode } from "./outline";
+import type { Highlight } from "./types";
 import styles from "./OutlinePanel.module.css";
+
+type Tab = "contents" | "notes";
+const TAB_KEY = "parrot.sidebarTab";
 
 interface Props {
   /** null while the outline is still loading. */
   nodes: OutlineNode[] | null;
+  highlights: Highlight[];
   currentPage: number;
   onSelect: (node: OutlineNode) => void;
+  onJump: (page: number, y: number) => void;
   onClose: () => void;
 }
 
-export function OutlinePanel({ nodes, currentPage, onSelect, onClose }: Props) {
+/** The reader sidebar: the PDF's contents, or a list of this document's highlights and notes. */
+export function OutlinePanel({ nodes, highlights, currentPage, onSelect, onJump, onClose }: Props) {
+  // Only ever mounted client-side (after the PDF loads or a click), so reading storage here
+  // can't cause a hydration mismatch.
+  const [tab, setTab] = useState<Tab>(() => {
+    try {
+      return localStorage.getItem(TAB_KEY) === "notes" ? "notes" : "contents";
+    } catch {
+      return "contents";
+    }
+  });
+  function selectTab(next: Tab) {
+    setTab(next);
+    try {
+      localStorage.setItem(TAB_KEY, next);
+    } catch {}
+  }
+
   const activeId = nodes ? activeOutlineId(nodes, currentPage) : null;
   // Explicit user toggles; anything not listed falls back to the default (collapsed).
   const [toggled, setToggled] = useState<Record<string, boolean>>({});
@@ -22,12 +46,12 @@ export function OutlinePanel({ nodes, currentPage, onSelect, onClose }: Props) {
   const forced = new Set(activeId ? ancestorIds(activeId) : []);
   const isOpen = (id: string) => toggled[id] ?? forced.has(id);
 
-  // Keep the active row in view as the reader scrolls.
+  // Keep the active row in view as the reader scrolls (and when switching back to Contents).
   useEffect(() => {
     listRef.current
       ?.querySelector("[data-active]")
       ?.scrollIntoView({ block: "nearest" });
-  }, [activeId]);
+  }, [activeId, tab]);
 
   function renderList(list: OutlineNode[], depth: number) {
     return (
@@ -74,15 +98,34 @@ export function OutlinePanel({ nodes, currentPage, onSelect, onClose }: Props) {
   }
 
   return (
-    <aside className={styles.outline} aria-label="Contents">
+    <aside className={styles.outline} aria-label="Sidebar">
       <div className={styles.outlineHeader}>
-        <span>Contents</span>
-        <button className={styles.outlineClose} onClick={onClose} aria-label="Close contents">
+        <div className={styles.tabs} role="tablist">
+          <button
+            role="tab"
+            className={styles.tab}
+            aria-selected={tab === "contents"}
+            onClick={() => selectTab("contents")}
+          >
+            Contents
+          </button>
+          <button
+            role="tab"
+            className={styles.tab}
+            aria-selected={tab === "notes"}
+            onClick={() => selectTab("notes")}
+          >
+            Notes{highlights.length > 0 && <span className={styles.tabCount}>{highlights.length}</span>}
+          </button>
+        </div>
+        <button className={styles.outlineClose} onClick={onClose} aria-label="Close sidebar">
           ×
         </button>
       </div>
-      <div className={styles.outlineBody} ref={listRef}>
-        {nodes === null ? (
+      <div className={styles.outlineBody} ref={listRef} role="tabpanel">
+        {tab === "notes" ? (
+          <AnnotationList highlights={highlights} onJump={onJump} />
+        ) : nodes === null ? (
           <p className={styles.outlineEmpty}>Loading outline…</p>
         ) : nodes.length === 0 ? (
           <p className={styles.outlineEmpty}>This PDF has no outline.</p>

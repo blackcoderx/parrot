@@ -149,12 +149,16 @@ export function Reader({ documentId, title, initialPage }: Props) {
     [documentId],
   );
 
+  // Scroll to a page (and optionally a spot on it, 0..1 down the page) via PdfViewer.
+  const jumpTo = useCallback((page: number, y?: number | null) => {
+    setCurrentPage(page);
+    setJump((j) => ({ page, y, nonce: (j?.nonce ?? 0) + 1 }));
+  }, []);
+
   async function handleOutlineSelect(node: OutlineNode) {
     if (node.page === null) return;
-    const page = node.page;
-    setCurrentPage(page);
-    const y = pdfRef.current ? await headingY(pdfRef.current, node) : null;
-    setJump((j) => ({ page, y, nonce: (j?.nonce ?? 0) + 1 }));
+    setCurrentPage(node.page); // update the indicator before the heading lookup resolves
+    jumpTo(node.page, pdfRef.current ? await headingY(pdfRef.current, node) : null);
   }
 
   // Detect text selections inside the viewer (ignored while a pen tool is active).
@@ -291,11 +295,9 @@ export function Reader({ documentId, title, initialPage }: Props) {
   const goToPage = useCallback(
     (n: number) => {
       if (!numPages) return;
-      const clamped = Math.min(Math.max(1, Math.round(n)), numPages);
-      setCurrentPage(clamped);
-      setJump((j) => ({ page: clamped, nonce: (j?.nonce ?? 0) + 1 }));
+      jumpTo(Math.min(Math.max(1, Math.round(n)), numPages));
     },
-    [numPages],
+    [numPages, jumpTo],
   );
 
   return (
@@ -311,8 +313,10 @@ export function Reader({ documentId, title, initialPage }: Props) {
         {outlineOpen && (
           <OutlinePanel
             nodes={outline}
+            highlights={highlights}
             currentPage={currentPage}
             onSelect={handleOutlineSelect}
+            onJump={jumpTo}
             onClose={toggleOutline}
           />
         )}
