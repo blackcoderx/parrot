@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Popover } from "@base-ui-components/react/popover";
 import { getJson, sendJson } from "@/components/api";
 import type { Flashcard } from "./types";
 import buttons from "./buttons.module.css";
 import styles from "./Flashcards.module.css";
+
+/** Gap between the toolbar and the popover (also used to aim the open animation). */
+const SIDE_OFFSET = 12;
 
 /** What the flashcards popover is showing. */
 export type FlashView = { kind: "review" } | { kind: "form"; editing: Flashcard | null };
@@ -34,6 +37,28 @@ export function Flashcards({
   const [direction, setDirection] = useState<"next" | "prev">("next");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const loaded = useRef(false);
+
+  // Make the popover grow out of the toolbar button that opened it, like a macOS window
+  // zooming out of its Dock icon. The popup is centred on the toolbar, SIDE_OFFSET above it,
+  // so the origin follows from the button's offset — no need to wait for positioning. A
+  // callback ref, because the portal attaches the popup after this component's effects run;
+  // it fires as the element mounts, before paint, while [data-starting-style] still applies.
+  // Re-aimed when the view changes, so closing shrinks back into the matching button.
+  const aimPopup = useCallback(
+    (popup: HTMLDivElement | null) => {
+      const toolbar = toolbarRef.current;
+      if (!popup || !toolbar) return;
+      const label = view.kind === "form" && !view.editing ? "New flashcard" : "Flashcards";
+      const button = toolbar.querySelector(`[aria-label="${label}"]`);
+      if (!button) return;
+      const bar = toolbar.getBoundingClientRect();
+      const btn = button.getBoundingClientRect();
+      const dx = btn.left + btn.width / 2 - (bar.left + bar.width / 2);
+      const dy = SIDE_OFFSET + (btn.top + btn.height / 2 - bar.top);
+      popup.style.transformOrigin = `calc(50% + ${dx}px) calc(100% + ${dy}px)`;
+    },
+    [toolbarRef, view],
+  );
 
   // Load this document's cards the first time the popover opens.
   useEffect(() => {
@@ -105,11 +130,11 @@ export function Flashcards({
           anchor={toolbarRef}
           side="top"
           align="center"
-          sideOffset={12}
+          sideOffset={SIDE_OFFSET}
           collisionPadding={12}
           className={styles.flashPositioner}
         >
-          <Popover.Popup className={styles.flashPopup} onKeyDown={onKeyDown}>
+          <Popover.Popup ref={aimPopup} className={styles.flashPopup} onKeyDown={onKeyDown}>
             <div className={styles.flashHeader}>
               <span className={styles.flashTitle}>{title}</span>
               {view.kind === "review" && count > 0 && (

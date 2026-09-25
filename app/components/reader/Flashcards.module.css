@@ -14,16 +14,29 @@
   border-radius: 12px;
   box-shadow: 0 12px 40px rgba(2, 1, 0, 0.22);
   outline: none;
+  /* Grows out of the toolbar button that opened it (set inline by Flashcards.tsx); Base UI's
+     origin on the toolbar is the fallback. */
   transform-origin: var(--transform-origin);
+  /* macOS-style "whoosh": a fast expo ease-out from a small, soft-focus point. */
   transition:
-    opacity 0.18s ease,
-    transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    opacity 0.2s ease-out,
+    transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.3s ease-out;
 }
 
 .flashPopup[data-starting-style],
 .flashPopup[data-ending-style] {
   opacity: 0;
-  transform: translateY(10px) scale(0.96);
+  transform: scale(0.1);
+  filter: blur(6px);
+}
+
+/* Closing is quicker and accelerates back into the button. */
+.flashPopup[data-ending-style] {
+  transition:
+    opacity 0.18s ease-in 0.04s,
+    transform 0.22s cubic-bezier(0.5, 0, 0.75, 0),
+    filter 0.18s ease-in;
 }
 
 .flashHeader {
@@ -347,6 +360,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .flashPopup,
+  .flashPopup[data-ending-style],
   .flashCard {
     transition: none;
   }
