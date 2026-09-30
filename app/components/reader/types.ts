@@ -1,4 +1,4 @@
-export type { Flashcard, Highlight, NormRect } from "@/types";
+export type { CardSource, Flashcard, Highlight, NormRect } from "@/types";
 
 /** Faint warm-amber wash for note highlights (kept readable over text). */
 export const NOTE_COLOR = "rgba(245, 179, 1, 0.16)";

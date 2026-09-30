@@ -96,6 +96,38 @@ export function activeOutlineId(nodes: OutlineNode[], currentPage: number): stri
   return active;
 }
 
+/**
+ * The section a spot in the document belongs to: the last entry (document order) starting
+ * before `page`, or on `page` above `y` (0..1 down the page). With no `y`, any entry starting
+ * on `page` counts, as in `activeOutlineId`. Only entries on `page` itself need a heading
+ * lookup, so this costs at most a page fetch.
+ */
+export async function sectionAt(
+  pdf: PdfDocument | null,
+  nodes: OutlineNode[],
+  page: number,
+  y: number | null,
+): Promise<OutlineNode | null> {
+  const flat: OutlineNode[] = [];
+  const walk = (list: OutlineNode[]) => {
+    for (const n of list) {
+      if (n.page !== null && n.page <= page) flat.push(n);
+      walk(n.children);
+    }
+  };
+  walk(nodes);
+
+  // Selecting the heading itself puts `y` a hair below its top, hence the tolerance.
+  const starts = await Promise.all(
+    flat.map(async (n) => {
+      if (n.page! < page || y === null || !pdf) return true;
+      const top = await headingY(pdf, n);
+      return top === null || top <= y + 0.02;
+    }),
+  );
+  return flat.findLast((_, i) => starts[i]) ?? null;
+}
+
 /** Ids of every ancestor of `id` (ids are dotted paths, e.g. "2.1.0"). */
 export function ancestorIds(id: string): string[] {
   const parts = id.split(".");

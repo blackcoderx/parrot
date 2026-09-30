@@ -82,6 +82,10 @@ hook. Saving a thread (`saveThread` in `db.ts`) writes the anchor highlight, cha
 transaction. The selection menu's Flashcard item calls `/api/flashcards/generate`, which drafts one
 card with `generateText` + `Output.object` (a `jsonSchema`, no zod) and saves nothing: the draft
 opens pre-filled in the flashcards form and is saved through the normal `POST /api/flashcards`.
+New cards carry a fixed `CardSource` (page, y, and the enclosing outline entry from `sectionAt`
+in `outline.ts`, computed by `Reader`) plus reader-editable `tags` (a JSON column). The review
+popover filters by section — an outline id matches its dotted-path descendants — or by tag, and
+the card's source chip jumps back via `jumpTo`.
 
 **Styling.** Base UI headless primitives styled with **plain CSS Modules — no Tailwind.** Each
 reader component has its own `*.module.css`; page-level overlays share `Reader.module.css`, and the

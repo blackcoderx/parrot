@@ -3,11 +3,16 @@ import "server-only";
 import Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
 import { DB_PATH, ensureDirs } from "./paths";
-import type { DocumentRow, Flashcard, Highlight, Message, NormRect } from "@/types";
+import type { CardSource, DocumentRow, Flashcard, Highlight, Message, NormRect } from "@/types";
 
 // Shape as stored in SQLite (rects is a JSON string column).
 interface HighlightDbRow extends Omit<Highlight, "rects"> {
   rects: string;
+}
+
+// Shape as stored in SQLite (tags is a JSON string column).
+interface FlashcardDbRow extends Omit<Flashcard, "tags"> {
+  tags: string;
 }
 
 const globalForDb = globalThis as unknown as { parrotDb?: Database.Database };
@@ -72,6 +77,11 @@ function createDb(): Database.Database {
       question    TEXT NOT NULL,
       hint        TEXT,
       answer      TEXT NOT NULL,
+      page        INTEGER,
+      y           REAL,
+      section_id  TEXT,
+      section     TEXT,
+      tags        TEXT NOT NULL DEFAULT '[]',
       created_at  INTEGER NOT NULL,
       updated_at  INTEGER NOT NULL
     );
@@ -86,12 +96,20 @@ function createDb(): Database.Database {
     );
   `);
 
-  // Migrate databases created before the `note` column existed (CREATE TABLE
-  // IF NOT EXISTS above is a no-op for them).
-  const hasNote = (db.prepare("PRAGMA table_info(highlights)").all() as { name: string }[]).some(
-    (c) => c.name === "note",
-  );
-  if (!hasNote) db.exec("ALTER TABLE highlights ADD COLUMN note TEXT");
+  // Migrate databases created before a column existed (CREATE TABLE IF NOT EXISTS above is a
+  // no-op for them).
+  function addColumn(table: string, name: string, ddl: string) {
+    const columns = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+    if (!columns.some((c) => c.name === name)) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${ddl}`);
+    }
+  }
+  addColumn("highlights", "note", "TEXT");
+  addColumn("flashcards", "page", "INTEGER");
+  addColumn("flashcards", "y", "REAL");
+  addColumn("flashcards", "section_id", "TEXT");
+  addColumn("flashcards", "section", "TEXT");
+  addColumn("flashcards", "tags", "TEXT NOT NULL DEFAULT '[]'");
 
   // Threads orphaned by highlight deletes before deleteHighlight removed them too. Every
   // saved thread has an anchor, so an anchorless chat can never be reopened.
@@ -189,10 +207,15 @@ export function saveOutline(documentId: string, version: number, data: string): 
 // Flashcard queries
 // ---------------------------------------------------------------------------
 
+function toFlashcard(row: FlashcardDbRow): Flashcard {
+  return { ...row, tags: JSON.parse(row.tags) as string[] };
+}
+
 export function listFlashcards(documentId: string): Flashcard[] {
-  return db
+  const rows = db
     .prepare("SELECT * FROM flashcards WHERE document_id = ? ORDER BY created_at ASC")
-    .all(documentId) as Flashcard[];
+    .all(documentId) as FlashcardDbRow[];
+  return rows.map(toFlashcard);
 }
 
 export function insertFlashcard(card: {
@@ -201,27 +224,45 @@ export function insertFlashcard(card: {
   question: string;
   hint: string | null;
   answer: string;
+  source: CardSource | null;
+  tags: string[];
 }): Flashcard {
-  return db
+  const { source, tags, ...rest } = card;
+  const row = db
     .prepare(
-      `INSERT INTO flashcards (id, document_id, question, hint, answer, created_at, updated_at)
-       VALUES (@id, @document_id, @question, @hint, @answer, @now, @now)
+      `INSERT INTO flashcards (id, document_id, question, hint, answer, page, y, section_id,
+                               section, tags, created_at, updated_at)
+       VALUES (@id, @document_id, @question, @hint, @answer, @page, @y, @section_id,
+               @section, @tags, @now, @now)
        RETURNING *`,
     )
-    .get({ ...card, now: Date.now() }) as Flashcard;
+    .get({
+      ...rest,
+      page: source?.page ?? null,
+      y: source?.y ?? null,
+      section_id: source?.section_id ?? null,
+      section: source?.section ?? null,
+      tags: JSON.stringify(tags),
+      now: Date.now(),
+    }) as FlashcardDbRow;
+  return toFlashcard(row);
 }
 
-/** Edit a card (omitted fields keep their value; a null hint clears it). */
+/**
+ * Edit a card (omitted fields keep their value; a null hint clears it). The source is fixed
+ * when the card is created.
+ */
 export function updateFlashcard(
   id: string,
-  fields: { question?: string; hint?: string | null; answer?: string },
+  fields: { question?: string; hint?: string | null; answer?: string; tags?: string[] },
 ): Flashcard | undefined {
-  return db
+  const row = db
     .prepare(
       `UPDATE flashcards
           SET question   = COALESCE(@question, question),
               hint       = CASE WHEN @setHint THEN @hint ELSE hint END,
               answer     = COALESCE(@answer, answer),
+              tags       = COALESCE(@tags, tags),
               updated_at = @now
         WHERE id = @id
        RETURNING *`,
@@ -232,8 +273,10 @@ export function updateFlashcard(
       setHint: fields.hint !== undefined ? 1 : 0,
       hint: fields.hint ?? null,
       answer: fields.answer ?? null,
+      tags: fields.tags ? JSON.stringify(fields.tags) : null,
       now: Date.now(),
-    }) as Flashcard | undefined;
+    }) as FlashcardDbRow | undefined;
+  return row && toFlashcard(row);
 }
 
 export function deleteFlashcard(id: string): void {

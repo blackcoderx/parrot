@@ -3,7 +3,7 @@ import { deleteFlashcard, updateFlashcard } from "@/lib/db";
 import { readJson } from "@/lib/http";
 import { readCardFields } from "../fields";
 
-// PATCH /api/flashcards/[id] — edit a card ({ question?, hint?, answer? }).
+// PATCH /api/flashcards/[id] — edit a card ({ question?, hint?, answer?, tags? }).
 export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/flashcards/[id]">) {
   const { id } = await ctx.params;
   const body = await readJson<Record<string, unknown>>(request);

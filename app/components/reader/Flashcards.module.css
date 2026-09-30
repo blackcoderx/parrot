@@ -52,6 +52,110 @@
   font-weight: 600;
 }
 
+/* Review filter (Base UI Select): a compact pill in the header. */
+.flashFilter {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 260px;
+  padding: 3px 6px 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.12s ease;
+}
+
+.flashFilter:hover,
+.flashFilter[data-popup-open] {
+  border-color: var(--accent);
+}
+
+.flashFilterValue {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flashFilterIcon {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+/* Above the flashcards popover. */
+.filterPositioner {
+  z-index: 60;
+}
+
+.filterPopup {
+  box-sizing: border-box;
+  min-width: max(var(--anchor-width), 200px);
+  max-width: 360px;
+  max-height: min(360px, var(--available-height));
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px;
+  background: var(--background);
+  border-radius: 12px;
+  box-shadow: 0 10px 32px rgba(2, 1, 0, 0.16);
+  outline: none;
+  transform-origin: var(--transform-origin);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.filterPopup[data-starting-style],
+.filterPopup[data-ending-style] {
+  opacity: 0;
+  transform: scale(0.97);
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.filterGroupLabel {
+  padding: 4px 10px 2px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.filterItem {
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--foreground);
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filterItem[data-highlighted] {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.filterItem[data-selected] {
+  color: var(--accent);
+  font-weight: 550;
+}
+
 .flashCount {
   font-size: 12px;
   color: var(--muted);
@@ -224,6 +328,56 @@
   transform: rotateY(180deg);
 }
 
+/* Room for the source + tags row pinned to the top of the question face. */
+.flashFace[data-meta] {
+  padding-top: 52px;
+}
+
+.flashMeta {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* "§ Section · p. 14": jumps to where the card came from. */
+.flashSource {
+  max-width: 100%;
+  padding: 3px 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.flashSource:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.flashTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 550;
+  white-space: nowrap;
+}
+
 .flashLabel {
   font-size: 11px;
   font-weight: 600;
@@ -343,6 +497,86 @@
 .flashField textarea::placeholder,
 .flashField input::placeholder {
   color: var(--muted);
+}
+
+/* "From § Section · p. 14" above the form fields. */
+.flashFormSource {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.flashFormSource strong {
+  font-weight: 550;
+  color: var(--accent);
+}
+
+.flashSourceRemove,
+.tagRemove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  line-height: 1;
+}
+
+.flashSourceRemove {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  font-size: 15px;
+}
+
+.flashSourceRemove:hover {
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+/* Tag chips + text box, styled as one input. */
+.tagInput {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--background);
+  cursor: text;
+  transition: border-color 0.12s ease;
+}
+
+.tagInput:focus-within {
+  border-color: var(--accent);
+}
+
+.tagInput .flashTag {
+  padding-right: 4px;
+  color: var(--foreground);
+}
+
+.tagRemove {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  font-size: 13px;
+}
+
+.tagRemove:hover {
+  background: var(--border);
+  color: var(--foreground);
+}
+
+.flashField .tagInput input {
+  flex: 1;
+  width: auto;
+  min-width: 140px;
+  padding: 2px;
+  border: none;
 }
 
 .flashFormActions {

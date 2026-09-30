@@ -33,6 +33,17 @@ export interface Highlight {
   chat_id: string | null;
 }
 
+/** Where in the document a flashcard was made, captured when it's created. */
+export interface CardSource {
+  page: number;
+  /** 0 (top) .. 1 (bottom) down the page, e.g. the top of the selection; null = page top. */
+  y: number | null;
+  /** Id of the enclosing PDF outline entry (a dotted path, e.g. "2.1"), or null. */
+  section_id: string | null;
+  /** That entry's title, kept so the card can name its section without the outline. */
+  section: string | null;
+}
+
 export interface Flashcard {
   id: string;
   document_id: string;
@@ -40,6 +51,13 @@ export interface Flashcard {
   /** Optional nudge shown on request before the answer is revealed. */
   hint: string | null;
   answer: string;
+  /** Source fields (see CardSource); all null for cards made without one. */
+  page: number | null;
+  y: number | null;
+  section_id: string | null;
+  section: string | null;
+  /** The reader's own labels, for filtering. */
+  tags: string[];
   created_at: number;
   updated_at: number;
 }

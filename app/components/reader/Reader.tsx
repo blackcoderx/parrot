@@ -10,11 +10,11 @@ import { AskParrot, type AskAnchor } from "./AskParrot";
 import { NoteEditor, type NoteAnchor } from "./NoteEditor";
 import { OutlinePanel } from "./OutlinePanel";
 import { Flashcards, type FlashView } from "./Flashcards";
-import { headingY, loadOutline, type OutlineNode, type PdfDocument } from "./outline";
+import { headingY, loadOutline, sectionAt, type OutlineNode, type PdfDocument } from "./outline";
 import { extractText, type PageText } from "./find";
 import { FindBar } from "./FindBar";
 import { readSelection, type SelectionInfo } from "./selection";
-import { HIGHLIGHT_COLORS, type Highlight, type NormRect } from "./types";
+import { HIGHLIGHT_COLORS, type CardSource, type Highlight, type NormRect } from "./types";
 import styles from "./Reader.module.css";
 
 // react-pdf (pdf.js) touches browser-only globals at module load, so it must be client-only.
@@ -98,12 +98,23 @@ export function Reader({ documentId, title, initialPage }: Props) {
     setFlashOpen(true);
   }, [flashOpen, flashView]);
 
-  // Already on a blank new-card form → close; otherwise open straight into it.
-  const newFlashcard = useCallback(() => {
+  // Where a new flashcard comes from: a page, a spot on it, and the outline section there.
+  const sourceFor = useCallback(
+    async (page: number, y: number | null): Promise<CardSource> => {
+      const node = outline ? await sectionAt(pdfRef.current, outline, page, y) : null;
+      return { page, y, section_id: node?.id ?? null, section: node?.title ?? null };
+    },
+    [outline],
+  );
+
+  // Already on a blank new-card form → close; otherwise open straight into it, sourced from
+  // the page being read.
+  const newFlashcard = useCallback(async () => {
     if (flashOpen && flashView.kind === "form" && !flashView.editing) return setFlashOpen(false);
-    setFlashView({ kind: "form", editing: null });
+    const source = await sourceFor(pageRef.current, null);
+    setFlashView({ kind: "form", editing: null, source });
     setFlashOpen(true);
-  }, [flashOpen, flashView]);
+  }, [flashOpen, flashView, sourceFor]);
 
   // Find in document. The text is extracted once (on first open) and reused afterwards.
   const openFind = useCallback(() => {
@@ -268,11 +279,14 @@ export function Reader({ documentId, title, initialPage }: Props) {
   }
 
   // Have the AI draft a flashcard from a text selection (reviewed in the form before saving).
-  function handleFlashcard() {
+  async function handleFlashcard() {
     if (!selection) return;
-    setFlashView({ kind: "generate", text: selection.text, nonce: Date.now() });
-    setFlashOpen(true);
+    const { text, page, rects } = selection;
     clearSelection();
+    const y = rects.length ? Math.min(...rects.map((r) => r.y)) : null;
+    const source = await sourceFor(page, y);
+    setFlashView({ kind: "generate", text, source, nonce: Date.now() });
+    setFlashOpen(true);
   }
 
   // Add a note from a note-pen region.
@@ -422,9 +436,12 @@ export function Reader({ documentId, title, initialPage }: Props) {
         documentId={documentId}
         open={flashOpen}
         view={flashView}
+        outline={outline}
         toolbarRef={toolbarRef}
         onOpenChange={setFlashOpen}
         onViewChange={setFlashView}
+        onNewCard={newFlashcard}
+        onJump={jumpTo}
       />
 
       <Toolbar
