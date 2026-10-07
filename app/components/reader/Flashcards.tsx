@@ -6,6 +6,7 @@ import { Select } from "@base-ui-components/react/select";
 import { getJson, sendJson } from "@/components/api";
 import type { OutlineNode } from "./outline";
 import type { CardSource, Flashcard } from "./types";
+import Markdown from "./Markdown";
 import buttons from "./buttons.module.css";
 import styles from "./Flashcards.module.css";
 
@@ -465,10 +466,10 @@ function CardView({
             </div>
           )}
           <span className={styles.flashLabel}>Question</span>
-          <p className={styles.flashText}>{card.question}</p>
+          <CardText text={card.question} />
           {card.hint &&
             (hintShown ? (
-              <p className={styles.flashHint}>Hint: {card.hint}</p>
+              <CardText text={`Hint: ${card.hint}`} hint />
             ) : (
               <button
                 className={styles.flashTextBtn}
@@ -486,10 +487,24 @@ function CardView({
         </div>
         <div className={`${styles.flashFace} ${styles.flashBack}`} aria-hidden={!revealed}>
           <span className={styles.flashLabel}>Answer</span>
-          <p className={styles.flashText}>{card.answer}</p>
+          <CardText text={card.answer} />
           <span className={styles.flashCaption}>Click to see the question</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Card text rendered as Markdown + LaTeX. Clicking a link opens it without flipping the card. */
+function CardText({ text, hint }: { text: string; hint?: boolean }) {
+  return (
+    <div
+      className={hint ? styles.flashHint : styles.flashText}
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest("a")) e.stopPropagation();
+      }}
+    >
+      <Markdown>{text}</Markdown>
     </div>
   );
 }
@@ -588,6 +603,8 @@ function CardForm({
   const [source, setSource] = useState<CardSource | null>(
     editing ? cardSource(editing) : (initialSource ?? null),
   );
+  // Preview swaps the text fields for how the card will render (Markdown + LaTeX).
+  const [preview, setPreview] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -637,22 +654,49 @@ function CardForm({
           )}
         </div>
       )}
-      <label className={styles.flashField}>
-        <span>Question</span>
-        <textarea
-          value={question}
-          rows={3}
-          autoFocus
-          placeholder="What do you want to remember?"
-          onChange={(e) => setQuestion(e.target.value)}
-        />
-      </label>
-      <label className={styles.flashField}>
-        <span>
-          Hint <em>(optional)</em>
+      <div className={styles.formModeRow}>
+        <span className={styles.formHelp}>
+          Markdown and LaTeX: <code>$x^2$</code> inline, <code>$$…$$</code> on its own,{" "}
+          <code>\$</code> for a dollar sign
         </span>
-        <input value={hint} placeholder="A nudge, not the answer" onChange={(e) => setHint(e.target.value)} />
-      </label>
+        <div className={styles.formModeToggle} role="group" aria-label="Editor mode">
+          <button aria-pressed={!preview} onClick={() => setPreview(false)}>
+            Write
+          </button>
+          <button aria-pressed={preview} onClick={() => setPreview(true)}>
+            Preview
+          </button>
+        </div>
+      </div>
+      {preview ? (
+        <>
+          <PreviewField label="Question" text={question} />
+          {hint.trim() && <PreviewField label="Hint" text={hint} />}
+        </>
+      ) : (
+        <>
+          <label className={styles.flashField}>
+            <span>Question</span>
+            <textarea
+              value={question}
+              rows={3}
+              autoFocus
+              placeholder="What do you want to remember? e.g. What does $E = mc^2$ say?"
+              onChange={(e) => setQuestion(e.target.value)}
+            />
+          </label>
+          <label className={styles.flashField}>
+            <span>
+              Hint <em>(optional)</em>
+            </span>
+            <input
+              value={hint}
+              placeholder="A nudge, not the answer"
+              onChange={(e) => setHint(e.target.value)}
+            />
+          </label>
+        </>
+      )}
       {/* Not a <label>: clicking one activates its first button, which would remove a tag. */}
       <div className={styles.flashField}>
         <span>
@@ -666,15 +710,19 @@ function CardForm({
           onTextChange={setTagText}
         />
       </div>
-      <label className={styles.flashField}>
-        <span>Answer</span>
-        <textarea
-          value={answer}
-          rows={3}
-          placeholder="The answer"
-          onChange={(e) => setAnswer(e.target.value)}
-        />
-      </label>
+      {preview ? (
+        <PreviewField label="Answer" text={answer} />
+      ) : (
+        <label className={styles.flashField}>
+          <span>Answer</span>
+          <textarea
+            value={answer}
+            rows={3}
+            placeholder="The answer"
+            onChange={(e) => setAnswer(e.target.value)}
+          />
+        </label>
+      )}
       <div className={styles.flashFormActions}>
         {error && <span className={styles.flashError}>{error}</span>}
         <button className={buttons.askSave} onClick={onCancel}>
@@ -683,6 +731,18 @@ function CardForm({
         <button className={buttons.askSend} onClick={save} disabled={!canSave}>
           {saving ? "Saving…" : "Save card"}
         </button>
+      </div>
+    </div>
+  );
+}
+
+/** A form field shown as it will render on the card. */
+function PreviewField({ label, text }: { label: string; text: string }) {
+  return (
+    <div className={styles.flashField}>
+      <span>{label}</span>
+      <div className={styles.flashPreview}>
+        {text.trim() ? <CardText text={text} /> : <span className={styles.formHelp}>Nothing yet</span>}
       </div>
     </div>
   );

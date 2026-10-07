@@ -312,7 +312,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* "safe": a card taller than its face (display math) scrolls from the top, not clipped. */
+  justify-content: safe center;
   gap: 10px;
   padding: 22px 24px;
   overflow-y: auto;
@@ -395,7 +396,6 @@
   font-weight: 550;
   line-height: 1.45;
   color: var(--foreground);
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
@@ -403,7 +403,55 @@
   font-size: 13px;
   line-height: 1.4;
   color: var(--muted);
-  white-space: pre-wrap;
+}
+
+/* Card text is Markdown + LaTeX (rendered by Markdown.tsx). */
+.flashText,
+.flashHint {
+  max-width: 100%;
+  min-width: 0;
+}
+.flashText p,
+.flashHint p {
+  margin: 0;
+}
+.flashText p + p,
+.flashText p + ul,
+.flashText p + ol {
+  margin-top: 0.5em;
+}
+.flashText ul,
+.flashText ol {
+  margin: 0.3em 0;
+  padding-left: 1.3em;
+  text-align: left;
+}
+.flashText li > p {
+  margin: 0;
+}
+.flashText strong,
+.flashHint strong {
+  font-weight: 700;
+}
+.flashText a,
+.flashHint a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.flashText code,
+.flashHint code {
+  font-family: var(--font-geist-mono, ui-monospace, monospace);
+  font-size: 0.85em;
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+}
+.flashText :global(.katex-display),
+.flashHint :global(.katex-display) {
+  margin: 0.4em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 0;
 }
 
 .flashCaption {
@@ -497,6 +545,73 @@
 .flashField textarea::placeholder,
 .flashField input::placeholder {
   color: var(--muted);
+}
+
+/* Formatting help + the Write / Preview switch. */
+.formModeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.formHelp {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.formHelp code {
+  font-family: var(--font-geist-mono, ui-monospace, monospace);
+  font-size: 0.95em;
+  padding: 0.05em 0.3em;
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+.formModeToggle {
+  display: flex;
+  flex-shrink: 0;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.formModeToggle button {
+  padding: 3px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 550;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.formModeToggle button:hover {
+  color: var(--foreground);
+}
+
+.formModeToggle button[aria-pressed="true"] {
+  background: var(--background);
+  color: var(--accent);
+  box-shadow: 0 1px 3px rgba(2, 1, 0, 0.1);
+}
+
+/* A field shown as it will render on the card. */
+.flashPreview {
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 400;
+}
+
+.flashPreview .flashText {
+  font-size: 16px;
 }
 
 /* "From § Section · p. 14" above the form fields. */

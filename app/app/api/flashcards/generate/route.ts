@@ -37,7 +37,9 @@ function buildSystem(title: string): string {
       "numbers, results, or claims the excerpt doesn't support.",
     "The hint is a short nudge that doesn't give the answer away; leave it empty if the question " +
       "doesn't need one.",
-    "Write plain text only: no Markdown and no LaTeX. Write any math in plain notation or Unicode.",
+    "You may use light Markdown. Write math as LaTeX: $…$ inline and $$…$$ for a display " +
+      "equation. Use LaTeX only for math, not for ordinary words or numbers, and write a literal " +
+      "dollar sign as \\$.",
     `The paper is "${title}".`,
   ].join("\n");
 }
