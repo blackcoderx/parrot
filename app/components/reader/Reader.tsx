@@ -5,6 +5,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { getJson, sendJson } from "@/components/api";
 import { Toolbar } from "./Toolbar";
+import { useReadingMode } from "./readingMode";
 import { SelectionMenu } from "./SelectionMenu";
 import { AskParrot, type AskAnchor } from "./AskParrot";
 import { NoteEditor, type NoteAnchor } from "./NoteEditor";
@@ -65,6 +66,7 @@ export function Reader({ documentId, title, initialPage }: Props) {
   const [findOpen, setFindOpen] = useState(false);
   const [findQuery, setFindQuery] = useState("");
   const [findFocusKey, setFindFocusKey] = useState(0);
+  const [readingMode, setReadingMode] = useReadingMode();
   const toolbarRef = useRef<HTMLDivElement>(null);
   const cachedOutline = useRef<Promise<OutlineNode[] | null> | null>(null);
   const pdfRef = useRef<PdfDocument | null>(null);
@@ -457,6 +459,8 @@ export function Reader({ documentId, title, initialPage }: Props) {
         scale={scale}
         onZoomIn={() => setScale((s) => Math.min(MAX_SCALE, +(s + SCALE_STEP).toFixed(2)))}
         onZoomOut={() => setScale((s) => Math.max(MIN_SCALE, +(s - SCALE_STEP).toFixed(2)))}
+        readingMode={readingMode}
+        onReadingModeChange={setReadingMode}
         activeColor={activeColor}
         onColorChange={setActiveColor}
         aiMode={aiMode}

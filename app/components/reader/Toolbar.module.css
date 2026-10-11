@@ -112,6 +112,41 @@
   border-color: var(--porcelain);
 }
 
+/* Reading mode picker popup */
+.modePopup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  background: var(--black);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(2, 1, 0, 0.28);
+}
+
+.modeItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 120px;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--porcelain);
+  font-size: 13px;
+  text-align: left;
+  transition: background 0.12s ease;
+}
+
+.modeItem:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.modeItem[data-active],
+.modeItem[data-active]:hover {
+  background: var(--accent);
+}
+
 .toolBtn[data-active] {
   background: var(--accent);
   color: var(--porcelain);

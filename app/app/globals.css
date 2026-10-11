@@ -12,8 +12,43 @@
   --border: #e6e6e4;
   --surface: #f4f4f2;
 
+  /* Reader page rendering (overridden per reading mode below) */
+  --page-filter: none;
+  --page-bg: var(--background);
+  --highlight-blend: multiply;
+
   --radius: 8px;
   --font-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+}
+
+/* Reading modes — set on <html> by the reader (components/reader/readingMode.ts) so
+   portalled popovers pick them up too. */
+:root[data-reading="sepia"] {
+  --background: #f8f1e3;
+  --foreground: #3b2f22;
+  --muted: #7a6a55;
+  --border: #e2d6bd;
+  --surface: #efe6d2;
+
+  --page-filter: sepia(0.4) brightness(0.96);
+  --page-bg: #f1e6cf;
+}
+
+:root[data-reading="dark"] {
+  color-scheme: dark;
+
+  --background: #1c1c1e;
+  --foreground: #e8e6e3;
+  --accent: #7c5cf0;
+  --muted: #9a9a9a;
+  --border: #2e2e30;
+  --surface: #121212;
+
+  /* A soft charcoal page (#1f1f1f) with #e0e0e0 text rather than pure black/white;
+     the hue rotation undoes the inversion's hue flip so figures keep their colors. */
+  --page-filter: invert(0.88) hue-rotate(180deg);
+  --page-bg: #1f1f1f;
+  --highlight-blend: screen;
 }
 
 * {

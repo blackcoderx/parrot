@@ -62,7 +62,13 @@
   position: relative;
   line-height: 0;
   box-shadow: 0 2px 12px rgba(2, 1, 0, 0.1);
-  background: var(--background);
+  background: var(--page-bg);
+}
+
+/* Reading mode tint/inversion — on the canvas only, so highlight and annotation layers
+   above it keep their colors. Display-only: the canvas pixels (and AI-pen crops) are unchanged. */
+.pageWrap :global(.react-pdf__Page__canvas) {
+  filter: var(--page-filter);
 }
 
 .status {
@@ -83,7 +89,7 @@
   border-radius: 2px;
   pointer-events: auto;
   cursor: pointer;
-  mix-blend-mode: multiply;
+  mix-blend-mode: var(--highlight-blend);
   transition: filter 0.1s ease;
 }
 
@@ -125,7 +131,7 @@
   border-radius: 2px;
   pointer-events: auto;
   cursor: pointer;
-  mix-blend-mode: multiply;
+  mix-blend-mode: var(--highlight-blend);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   transition: filter 0.1s ease;
 }

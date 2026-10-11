@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Popover } from "@base-ui-components/react/popover";
 import { HIGHLIGHT_COLORS } from "./types";
 import { NoteIcon } from "./NoteIcon";
+import { READING_MODES, type ReadingMode } from "./readingMode";
 import styles from "./Toolbar.module.css";
 
 interface Props {
@@ -19,6 +20,8 @@ interface Props {
   scale: number;
   onZoomIn: () => void;
   onZoomOut: () => void;
+  readingMode: ReadingMode;
+  onReadingModeChange: (mode: ReadingMode) => void;
   activeColor: string;
   onColorChange: (color: string) => void;
   aiMode: boolean;
@@ -40,6 +43,8 @@ export function Toolbar({
   scale,
   onZoomIn,
   onZoomOut,
+  readingMode,
+  onReadingModeChange,
   activeColor,
   onColorChange,
   aiMode,
@@ -103,6 +108,36 @@ export function Toolbar({
       <button className={styles.toolBtn} onClick={onZoomIn} aria-label="Zoom in">
         +
       </button>
+
+      <span className={styles.divider} aria-hidden />
+
+      <Popover.Root>
+        <Popover.Trigger
+          className={styles.toolBtn}
+          aria-label="Reading mode"
+          title={`Reading mode: ${READING_MODES.find((m) => m.value === readingMode)?.label}`}
+        >
+          <ReadingModeIcon mode={readingMode} />
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Positioner side="top" sideOffset={10}>
+            <Popover.Popup className={styles.modePopup}>
+              {READING_MODES.map(({ value, label }) => (
+                <Popover.Close
+                  key={value}
+                  className={styles.modeItem}
+                  aria-pressed={value === readingMode}
+                  data-active={value === readingMode || undefined}
+                  onClick={() => onReadingModeChange(value)}
+                >
+                  <ReadingModeIcon mode={value} />
+                  {label}
+                </Popover.Close>
+              ))}
+            </Popover.Popup>
+          </Popover.Positioner>
+        </Popover.Portal>
+      </Popover.Root>
 
       <span className={styles.divider} aria-hidden />
 
@@ -173,6 +208,44 @@ export function Toolbar({
         <NewFlashcardIcon />
       </button>
     </div>
+  );
+}
+
+function ReadingModeIcon({ mode }: { mode: ReadingMode }) {
+  if (mode === "dark") {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path
+          d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+  if (mode === "sepia") {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path
+          d="M12 6.5C10 5 7 4.5 4 5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5V5c-3-.5-6 0-8 1.5zM12 6.5v13"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 
