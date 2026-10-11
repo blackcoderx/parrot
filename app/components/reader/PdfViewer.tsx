@@ -156,10 +156,47 @@ export const PdfViewer = memo(function PdfViewer({
       return;
     }
     // Land the spot just below the sticky header, with a little breathing room.
-    const header = parseFloat(getComputedStyle(target).getPropertyValue("--reader-header-h")) || 0;
     const top = target.getBoundingClientRect().top + window.scrollY;
-    window.scrollTo({ top: top + scrollToPage.y * target.offsetHeight - header - 12 });
+    window.scrollTo({ top: top + scrollToPage.y * target.offsetHeight - headerHeight(target) - 12 });
   }, [scrollToPage, numPages]);
+
+  // Keep the reader's place across zoom. Zooming resizes every page but leaves scrollY alone,
+  // so the same pixel offset lands on a different page. Remember the page under the top edge
+  // (just below the sticky header) and how far into it the reader is — updated on scroll, which
+  // zooming doesn't fire — then scroll back to that spot before paint when the scale changes.
+  const anchor = useRef<{ page: number; frac: number } | null>(null);
+  useEffect(() => {
+    if (!numPages || !baseSize) return;
+    function record() {
+      const els = pageRefs.current;
+      if (!els[0]) return;
+      const line = headerHeight(els[0]);
+      // Pages are stacked top to bottom: binary-search the first one reaching below the line.
+      let lo = 0;
+      let hi = els.length - 1;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if ((els[mid]?.getBoundingClientRect().bottom ?? Infinity) > line) hi = mid;
+        else lo = mid + 1;
+      }
+      const r = els[lo]?.getBoundingClientRect();
+      if (r && r.height) anchor.current = { page: lo + 1, frac: (line - r.top) / r.height };
+    }
+    record();
+    window.addEventListener("scroll", record, { passive: true });
+    return () => window.removeEventListener("scroll", record);
+  }, [numPages, baseSize]);
+
+  const prevScale = useRef(scale);
+  useLayoutEffect(() => {
+    if (prevScale.current === scale) return;
+    prevScale.current = scale;
+    const a = anchor.current;
+    const el = a && pageRefs.current[a.page - 1];
+    if (!a || !el) return;
+    const r = el.getBoundingClientRect();
+    window.scrollTo({ top: window.scrollY + r.top + a.frac * r.height - headerHeight(el) });
+  }, [scale]);
 
   function handleLoad(pdf: PdfDocument) {
     setNumPages(pdf.numPages);
@@ -242,6 +279,11 @@ export const PdfViewer = memo(function PdfViewer({
     </Document>
   );
 });
+
+/** Height of the sticky reader header (the `--reader-header-h` set on `.reader`). */
+function headerHeight(el: Element): number {
+  return parseFloat(getComputedStyle(el).getPropertyValue("--reader-header-h")) || 0;
+}
 
 function Loading() {
   return <div className={styles.status}>Loading document…</div>;
