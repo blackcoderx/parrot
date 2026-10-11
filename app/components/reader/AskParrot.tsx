@@ -7,7 +7,7 @@ import { getJson, sendJson } from "@/components/api";
 import { TrashIcon } from "@/components/TrashIcon";
 import type { NormRect } from "./types";
 import Markdown from "./Markdown";
-import { useFloatingWindow } from "./useFloatingWindow";
+import { useFloatingWindow } from "@/components/useFloatingWindow";
 import buttons from "./buttons.module.css";
 import styles from "./AskParrot.module.css";
 

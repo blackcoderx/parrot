@@ -70,3 +70,17 @@ export interface Message {
   image: string | null;
   created_at: number;
 }
+
+/** Pomodoro lengths, in minutes; a long break replaces every `longEvery`-th short one. */
+export interface TimerSettings {
+  focusMin: number;
+  shortMin: number;
+  longMin: number;
+  longEvery: number;
+}
+
+/** Focus-session streak: consecutive days with a finished session, and today's count. */
+export interface FocusStats {
+  streak: number;
+  today: number;
+}

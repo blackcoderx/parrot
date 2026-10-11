@@ -4,7 +4,7 @@ import { useState } from "react";
 import { sendJson } from "@/components/api";
 import { NOTE_COLOR, type Highlight, type NormRect } from "./types";
 import { NoteIcon } from "./NoteIcon";
-import { useFloatingWindow } from "./useFloatingWindow";
+import { useFloatingWindow } from "@/components/useFloatingWindow";
 import buttons from "./buttons.module.css";
 import styles from "./NoteEditor.module.css";
 

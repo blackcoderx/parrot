@@ -112,6 +112,22 @@
   border-color: var(--porcelain);
 }
 
+/* Focus timer — shows the time left while its window is hidden */
+.timerBtn {
+  gap: 6px;
+}
+
+.timerClock {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A period just ended: nudge until the reader looks. */
+.timerBtn[data-alert] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
 /* Reading mode picker popup */
 .modePopup {
   display: flex;

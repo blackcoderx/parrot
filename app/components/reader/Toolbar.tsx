@@ -5,6 +5,7 @@ import { Popover } from "@base-ui-components/react/popover";
 import { HIGHLIGHT_COLORS } from "./types";
 import { NoteIcon } from "./NoteIcon";
 import { READING_MODES, type ReadingMode } from "./readingMode";
+import { TimerButton } from "@/components/timer/TimerButton";
 import styles from "./Toolbar.module.css";
 
 interface Props {
@@ -207,6 +208,10 @@ export function Toolbar({
       >
         <NewFlashcardIcon />
       </button>
+
+      <span className={styles.divider} aria-hidden />
+
+      <TimerButton className={`${styles.toolBtn} ${styles.timerBtn}`} clockClassName={styles.timerClock} />
     </div>
   );
 }

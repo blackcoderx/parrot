@@ -94,6 +94,17 @@ function createDb(): Database.Database {
       version     INTEGER NOT NULL,
       data        TEXT NOT NULL
     );
+
+    -- Finished Pomodoro focus sessions. day is the reader's local calendar day
+    -- (YYYY-MM-DD, sent by the client) so streaks follow their midnight, not UTC's.
+    CREATE TABLE IF NOT EXISTS focus_sessions (
+      id          TEXT PRIMARY KEY,
+      day         TEXT NOT NULL,
+      started_at  INTEGER NOT NULL,
+      minutes     INTEGER NOT NULL,
+      document_id TEXT REFERENCES documents(id) ON DELETE SET NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_focus_sessions_day ON focus_sessions(day);
   `);
 
   // Migrate databases created before a column existed (CREATE TABLE IF NOT EXISTS above is a
@@ -430,4 +441,28 @@ export function replaceMessages(
     });
   });
   tx();
+}
+
+// ---------------------------------------------------------------------------
+// Focus (Pomodoro) session queries
+// ---------------------------------------------------------------------------
+
+export function insertFocusSession(s: {
+  day: string;
+  started_at: number;
+  minutes: number;
+  document_id: string | null;
+}): void {
+  db.prepare(
+    `INSERT INTO focus_sessions (id, day, started_at, minutes, document_id)
+     VALUES (@id, @day, @started_at, @minutes, @document_id)`,
+  ).run({ id: randomUUID(), ...s });
+}
+
+/** Finished focus sessions per local day. */
+export function focusDayCounts(): Map<string, number> {
+  const rows = db
+    .prepare("SELECT day, COUNT(*) AS n FROM focus_sessions GROUP BY day")
+    .all() as { day: string; n: number }[];
+  return new Map(rows.map((r) => [r.day, r.n]));
 }

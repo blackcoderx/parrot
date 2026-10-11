@@ -40,7 +40,7 @@ never in the repo:
 
 `app/lib/paths.ts` resolves those paths; `app/lib/db.ts` opens the better-sqlite3 singleton and
 runs `CREATE TABLE IF NOT EXISTS` migrations on import (tables: `documents`, `highlights`, `chats`,
-`messages`, `settings`, `flashcards`, `outlines`).
+`messages`, `settings`, `flashcards`, `outlines`, `focus_sessions`).
 
 **Server boundary.** Everything in `app/lib/*` starts with `import "server-only"` and may only be
 imported from server code — Route Handlers under `app/app/api/**` and server components such as
@@ -86,6 +86,15 @@ New cards carry a fixed `CardSource` (page, y, and the enclosing outline entry f
 in `outline.ts`, computed by `Reader`) plus reader-editable `tags` (a JSON column). The review
 popover filters by section — an outline id matches its dotted-path descendants — or by tag, and
 the card's source chip jumps back via `jumpTo`.
+
+**Focus timer (Pomodoro).** `TimerProvider` (`app/components/timer/`) is mounted in the root layout,
+so it keeps running across the library and every document; `TimerButton`s in the reader toolbar
+and the library corner toggle its floating window (the shared `components/useFloatingWindow.ts`,
+with `closeOnEscape: false`). The running period lives in localStorage as an absolute `endsAt`, so
+it survives reloads; its context changes only on transitions, and countdowns tick locally via
+`useNow` so nothing else re-renders per second. Lengths are the `timer` key in `settings`;
+finished focus sessions go to `focus_sessions` keyed by the client's **local** day (YYYY-MM-DD),
+and `lib/focus.ts` derives the day streak from them.
 
 **Styling.** Base UI headless primitives styled with **plain CSS Modules — no Tailwind.** Each
 reader component has its own `*.module.css`; page-level overlays share `Reader.module.css`, and the

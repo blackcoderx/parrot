@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AlertDialog } from "@base-ui-components/react/alert-dialog";
 import { getJson, sendJson } from "@/components/api";
 import { SettingsPopover } from "@/components/settings/SettingsPopover";
+import { TimerButton } from "@/components/timer/TimerButton";
 import { TrashIcon } from "@/components/TrashIcon";
 import type { DocumentRow } from "@/types";
 import styles from "./Library.module.css";
@@ -103,6 +104,7 @@ export function Library({ initialDocs }: { initialDocs: LibraryDoc[] }) {
 
       <div className={styles.settings}>
         <SettingsPopover />
+        <TimerButton className={styles.timerBtn} clockClassName={styles.timerClock} />
       </div>
     </div>
   );

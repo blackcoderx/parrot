@@ -323,4 +323,35 @@
   position: fixed;
   left: 20px;
   bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Focus timer pill (matches the settings trigger; widens to show the time left) */
+.timerBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--foreground);
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+
+.timerBtn:hover,
+.timerBtn[data-active],
+.timerBtn[data-alert] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.timerClock {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }

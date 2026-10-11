@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-interface Pos {
+export interface Pos {
   left: number;
   top: number;
 }
@@ -10,8 +10,10 @@ interface Pos {
 /** Keep the whole window inside the viewport (so the header/close stays reachable). */
 function clampPos(left: number, top: number, w: number, h: number): Pos {
   const m = 8;
-  const maxLeft = Math.max(m, window.innerWidth - w - m);
-  const maxTop = Math.max(m, window.innerHeight - h - m);
+  // clientWidth/Height exclude the page scrollbars, so the window never slides under them.
+  const { clientWidth, clientHeight } = document.documentElement;
+  const maxLeft = Math.max(m, clientWidth - w - m);
+  const maxTop = Math.max(m, clientHeight - h - m);
   return {
     left: Math.min(Math.max(left, m), maxLeft),
     top: Math.min(Math.max(top, m), maxTop),
@@ -19,11 +21,17 @@ function clampPos(left: number, top: number, w: number, h: number): Pos {
 }
 
 /**
- * A draggable top-layer window (Popover API, `popover="manual"`), shared by Ask Parrot and
- * the note editor. Opens near `anchorRect` (or centered), stays clamped to the viewport,
- * closes on Escape, and drags by whatever element receives `headerProps`.
+ * A draggable top-layer window (Popover API, `popover="manual"`), shared by Ask Parrot, the
+ * note editor and the focus timer. Opens at `options.initialPos`, else near `anchorRect`, else
+ * centered; stays clamped to the viewport, closes on Escape (unless `closeOnEscape` is false),
+ * and drags by whatever element receives `headerProps`, reporting drops to `onMoved`.
  */
-export function useFloatingWindow(anchorRect: DOMRect | null, onClose: () => void) {
+export function useFloatingWindow(
+  anchorRect: DOMRect | null,
+  onClose: () => void,
+  options: { closeOnEscape?: boolean; initialPos?: Pos | null; onMoved?: (pos: Pos) => void } = {},
+) {
+  const { closeOnEscape = true, initialPos, onMoved } = options;
   const panelRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ dx: number; dy: number } | null>(null);
   const [pos, setPos] = useState<Pos | null>(null);
@@ -39,8 +47,8 @@ export function useFloatingWindow(anchorRect: DOMRect | null, onClose: () => voi
     }
     const w = el.offsetWidth;
     const h = el.offsetHeight;
-    const left = anchorRect ? anchorRect.left : (window.innerWidth - w) / 2;
-    const top = anchorRect ? anchorRect.bottom + 8 : (window.innerHeight - h) / 2;
+    const left = initialPos?.left ?? (anchorRect ? anchorRect.left : (window.innerWidth - w) / 2);
+    const top = initialPos?.top ?? (anchorRect ? anchorRect.bottom + 8 : (window.innerHeight - h) / 2);
     setPos(clampPos(left, top, w, h));
     return () => {
       try {
@@ -49,27 +57,34 @@ export function useFloatingWindow(anchorRect: DOMRect | null, onClose: () => voi
         // no-op
       }
     };
-    // Initial placement only — the anchor isn't live.
+    // Initial placement only — the anchor and initial position aren't live.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Escape closes; re-clamp if the window is resized.
+  // Escape closes; re-clamp when the viewable area changes. Observing <html> covers window
+  // resizes and also a page scrollbar appearing later (e.g. once a PDF loads), which fires no
+  // resize event.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (closeOnEscape && e.key === "Escape") onClose();
     }
     function onResize() {
       const el = panelRef.current;
       if (!el) return;
-      setPos((prev) => (prev ? clampPos(prev.left, prev.top, el.offsetWidth, el.offsetHeight) : prev));
+      setPos((prev) => {
+        if (!prev) return prev;
+        const p = clampPos(prev.left, prev.top, el.offsetWidth, el.offsetHeight);
+        return p.left === prev.left && p.top === prev.top ? prev : p;
+      });
     }
     window.addEventListener("keydown", onKey);
-    window.addEventListener("resize", onResize);
+    const observer = new ResizeObserver(onResize);
+    observer.observe(document.documentElement);
     return () => {
       window.removeEventListener("keydown", onKey);
-      window.removeEventListener("resize", onResize);
+      observer.disconnect();
     };
-  }, [onClose]);
+  }, [onClose, closeOnEscape]);
 
   // ---- Drag the window by its header (writes position straight to the DOM) ----
   function onPointerDown(e: React.PointerEvent) {
@@ -96,7 +111,10 @@ export function useFloatingWindow(anchorRect: DOMRect | null, onClose: () => voi
     e.currentTarget.releasePointerCapture?.(e.pointerId);
     document.body.style.userSelect = "";
     document.body.style.cursor = "";
-    setPos({ left: parseFloat(el.style.left), top: parseFloat(el.style.top) });
+    const p = { left: parseFloat(el.style.left), top: parseFloat(el.style.top) };
+    if (Number.isNaN(p.left) || Number.isNaN(p.top)) return; // a click on the header, not a drag
+    setPos(p);
+    onMoved?.(p);
   }
 
   const style: React.CSSProperties = {
