@@ -43,21 +43,66 @@ function normalizeMath(src: string): string {
     .join("");
 }
 
+/**
+ * Collapse text to a single line for a one-line preview (e.g. the Notes tab), leaving code
+ * untouched: every math delimiter becomes inline `$ … $` (so display math renders at text
+ * size rather than as a tall block) and the remaining newlines become spaces.
+ */
+function normalizeInline(src: string): string {
+  // A function replacement, so `$` in the output is literal (not a replace pattern).
+  const inlineMath = (_m: string, body: string) => `$${body.trim().replace(/\s*\n\s*/g, " ")}$`;
+  const parts = src.split(/(```[\s\S]*?```|`[^`\n]*`)/g);
+  return parts
+    .map((seg, i) =>
+      i % 2 === 1
+        ? seg
+        : seg
+            .replace(/\$\$([\s\S]+?)\$\$/g, inlineMath)
+            .replace(/\\\[([\s\S]*?)\\\]/g, inlineMath)
+            .replace(/\\\(([\s\S]*?)\\\)/g, inlineMath)
+            .replace(/\s*\n\s*/g, " "),
+    )
+    .join("");
+}
+
 /** Links open in a new tab safely. */
-const COMPONENTS = {
-  a: ({ ...props }: React.ComponentPropsWithoutRef<"a">) => (
-    <a {...props} target="_blank" rel="noreferrer noopener" />
-  ),
+function Link(props: React.ComponentPropsWithoutRef<"a">) {
+  return <a {...props} target="_blank" rel="noreferrer noopener" />;
+}
+
+const COMPONENTS = { a: Link };
+
+// One-line previews: block elements render as spans so everything stays on one line (and a
+// parent's `text-overflow: ellipsis` can trim it). Links become plain text too — previews sit
+// inside clickable rows, and an <a> may not nest in a <button>.
+function Span({ children }: { children?: React.ReactNode }) {
+  return <span>{children}</span>;
+}
+const INLINE_COMPONENTS = {
+  a: Span,
+  p: Span,
+  ul: Span,
+  ol: Span,
+  li: Span,
+  h1: Span,
+  h2: Span,
+  h3: Span,
+  h4: Span,
+  h5: Span,
+  h6: Span,
+  blockquote: Span,
+  pre: Span,
 };
 
-function Markdown({ children }: { children: string }) {
+/** Markdown + LaTeX. `inline` renders a single line, for previews. */
+function Markdown({ children, inline = false }: { children: string; inline?: boolean }) {
   return (
     <ReactMarkdown
       remarkPlugins={REMARK_PLUGINS}
       rehypePlugins={REHYPE_PLUGINS}
-      components={COMPONENTS}
+      components={inline ? INLINE_COMPONENTS : COMPONENTS}
     >
-      {normalizeMath(children)}
+      {inline ? normalizeInline(children) : normalizeMath(children)}
     </ReactMarkdown>
   );
 }

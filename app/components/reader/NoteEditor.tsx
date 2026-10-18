@@ -4,6 +4,8 @@ import { useState } from "react";
 import { sendJson } from "@/components/api";
 import { NOTE_COLOR, type Highlight, type NormRect } from "./types";
 import { NoteIcon } from "./NoteIcon";
+import Markdown from "./Markdown";
+import { ModeToggle } from "./ModeToggle";
 import { useFloatingWindow } from "@/components/useFloatingWindow";
 import buttons from "./buttons.module.css";
 import styles from "./NoteEditor.module.css";
@@ -23,8 +25,17 @@ interface Props {
   onSaved: () => void;
 }
 
+/**
+ * view: a saved note, rendered (Markdown + LaTeX). write / preview: editing, with the text box
+ * or how it will render.
+ */
+type Mode = "view" | "write" | "preview";
+
 export function NoteEditor({ documentId, anchorRect, anchor, onClose, onSaved }: Props) {
-  const [text, setText] = useState(anchor.kind === "existing" ? anchor.highlight.note ?? "" : "");
+  const saved = anchor.kind === "existing" ? (anchor.highlight.note ?? "") : "";
+  const isExisting = anchor.kind === "existing";
+  const [text, setText] = useState(saved);
+  const [mode, setMode] = useState<Mode>(isExisting && saved.trim() ? "view" : "write");
   const [saving, setSaving] = useState(false);
   const { panelRef, style, headerProps } = useFloatingWindow(anchorRect, onClose);
 
@@ -59,38 +70,62 @@ export function NoteEditor({ documentId, anchorRect, anchor, onClose, onSaved }:
     onClose();
   }
 
-  const isExisting = anchor.kind === "existing";
+  /** Drop unsaved edits and go back to the rendered note. */
+  function cancel() {
+    setText(saved);
+    setMode("view");
+  }
+
+  const editing = mode !== "view";
 
   return (
-    <div
-      ref={panelRef}
-      popover="manual"
-      className={styles.notePanel}
-      style={style}
-    >
+    <div ref={panelRef} popover="manual" className={styles.notePanel} style={style}>
       <div className={styles.noteHeader} {...headerProps}>
         <span className={styles.noteTitleRow}>
           <NoteIcon size={15} />
           <span className={styles.noteTitle}>Note</span>
         </span>
-        <button className={buttons.askClose} onClick={onClose} aria-label="Close">
-          ×
-        </button>
+        <span className={styles.noteHeaderActions}>
+          {editing && (
+            <ModeToggle
+              preview={mode === "preview"}
+              onChange={(preview) => setMode(preview ? "preview" : "write")}
+            />
+          )}
+          <button className={buttons.askClose} onClick={onClose} aria-label="Close">
+            ×
+          </button>
+        </span>
       </div>
 
-      <textarea
-        className={styles.noteTextarea}
-        value={text}
-        placeholder="Write your note…"
-        autoFocus
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-            e.preventDefault();
-            save();
-          }
-        }}
-      />
+      {mode === "write" ? (
+        <textarea
+          className={styles.noteTextarea}
+          value={text}
+          placeholder="Write your note… Markdown and LaTeX: $x^2$ inline, $$…$$ on its own line"
+          autoFocus
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              save();
+            }
+          }}
+        />
+      ) : (
+        <div
+          className={styles.noteRendered}
+          // In the saved view, double-click to edit (single clicks still follow links).
+          onDoubleClick={mode === "view" ? () => setMode("write") : undefined}
+          title={mode === "view" ? "Double-click to edit" : undefined}
+        >
+          {text.trim() ? (
+            <Markdown>{text}</Markdown>
+          ) : (
+            <span className={styles.noteEmpty}>Nothing to preview</span>
+          )}
+        </div>
+      )}
 
       <div className={styles.noteActions}>
         {isExisting && (
@@ -98,9 +133,22 @@ export function NoteEditor({ documentId, anchorRect, anchor, onClose, onSaved }:
             Delete
           </button>
         )}
-        <button className={buttons.askSave} onClick={save} disabled={!text.trim() || saving}>
-          {saving ? "…" : "Save"}
-        </button>
+        {editing ? (
+          <>
+            {isExisting && saved.trim() && (
+              <button className={styles.noteCancel} onClick={cancel}>
+                Cancel
+              </button>
+            )}
+            <button className={buttons.askSave} onClick={save} disabled={!text.trim() || saving}>
+              {saving ? "…" : "Save"}
+            </button>
+          </>
+        ) : (
+          <button className={buttons.askSave} onClick={() => setMode("write")}>
+            Edit
+          </button>
+        )}
       </div>
     </div>
   );

@@ -85,7 +85,9 @@ opens pre-filled in the flashcards form and is saved through the normal `POST /a
 New cards carry a fixed `CardSource` (page, y, and the enclosing outline entry from `sectionAt`
 in `outline.ts`, computed by `Reader`) plus reader-editable `tags` (a JSON column). The review
 popover filters by section — an outline id matches its dotted-path descendants — or by tag, and
-the card's source chip jumps back via `jumpTo`.
+the card's source chip jumps back via `jumpTo`. Notes render through the same `Markdown.tsx`:
+`NoteEditor` opens a saved note rendered (Edit / double-click to edit; Write / Preview via the
+shared `ModeToggle`), and the Notes tab uses its `inline` mode for one-line previews.
 
 **Focus timer (Pomodoro).** `TimerProvider` (`app/components/timer/`) is mounted in the root layout,
 so it keeps running across the library and every document; `TimerButton`s in the reader toolbar

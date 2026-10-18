@@ -248,3 +248,9 @@
   display: flex;
   color: #b7860b;
 }
+
+/* A note's one-line preview renders its LaTeX (Markdown inline mode); keep formulas at the
+   row's text size so they sit on the line. */
+.outlineTitle :global(.katex) {
+  font-size: 1em;
+}

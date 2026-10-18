@@ -570,36 +570,6 @@
   color: var(--foreground);
 }
 
-.formModeToggle {
-  display: flex;
-  flex-shrink: 0;
-  padding: 2px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-}
-
-.formModeToggle button {
-  padding: 3px 10px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 550;
-  transition: background 0.12s ease, color 0.12s ease;
-}
-
-.formModeToggle button:hover {
-  color: var(--foreground);
-}
-
-.formModeToggle button[aria-pressed="true"] {
-  background: var(--background);
-  color: var(--accent);
-  box-shadow: 0 1px 3px rgba(2, 1, 0, 0.1);
-}
-
 /* A field shown as it will render on the card. */
 .flashPreview {
   min-height: 42px;

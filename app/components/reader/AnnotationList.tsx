@@ -2,6 +2,7 @@
 
 import type { Highlight } from "./types";
 import { NoteIcon } from "./NoteIcon";
+import Markdown from "./Markdown";
 import styles from "./OutlinePanel.module.css";
 
 interface Props {
@@ -42,7 +43,10 @@ export function AnnotationList({ highlights, onJump }: Props) {
                     onClick={() => onJump(h.page, h.rects[0]?.y ?? 0)}
                   >
                     <KindMarker highlight={h} />
-                    <span className={styles.outlineTitle}>{snippet}</span>
+                    <span className={styles.outlineTitle}>
+                      {/* Notes are Markdown + LaTeX; highlight text is plain PDF text. */}
+                      {h.note ? <Markdown inline>{h.note}</Markdown> : snippet}
+                    </span>
                   </button>
                 </li>
               );

@@ -7,6 +7,7 @@ import { getJson, sendJson } from "@/components/api";
 import type { OutlineNode } from "./outline";
 import type { CardSource, Flashcard } from "./types";
 import Markdown from "./Markdown";
+import { ModeToggle } from "./ModeToggle";
 import buttons from "./buttons.module.css";
 import styles from "./Flashcards.module.css";
 
@@ -659,14 +660,7 @@ function CardForm({
           Markdown and LaTeX: <code>$x^2$</code> inline, <code>$$…$$</code> on its own,{" "}
           <code>\$</code> for a dollar sign
         </span>
-        <div className={styles.formModeToggle} role="group" aria-label="Editor mode">
-          <button aria-pressed={!preview} onClick={() => setPreview(false)}>
-            Write
-          </button>
-          <button aria-pressed={preview} onClick={() => setPreview(true)}>
-            Preview
-          </button>
-        </div>
+        <ModeToggle preview={preview} onChange={setPreview} />
       </div>
       {preview ? (
         <>
