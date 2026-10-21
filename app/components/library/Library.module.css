@@ -55,6 +55,17 @@
   border-color: var(--accent);
 }
 
+/* "12 due" on the Flashcards link */
+.dueBadge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 .newFile:disabled {
   opacity: 0.6;
   cursor: default;

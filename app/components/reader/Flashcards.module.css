@@ -169,6 +169,20 @@
   margin-left: auto;
 }
 
+/* Link to the all-documents study page. */
+.flashStudyLink {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--accent);
+  transition: background 0.12s ease;
+}
+
+.flashStudyLink:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
 .flashIconBtn {
   display: flex;
   align-items: center;

@@ -1,4 +1,4 @@
-import { listDocuments } from "@/lib/db";
+import { countDueFlashcards, listDocuments } from "@/lib/db";
 import { Library } from "@/components/library/Library";
 
 // The list comes straight from SQLite, so render per request rather than once at build.
@@ -11,5 +11,5 @@ export default function Home() {
     last_page,
     page_count,
   }));
-  return <Library initialDocs={docs} />;
+  return <Library initialDocs={docs} dueCards={countDueFlashcards()} />;
 }

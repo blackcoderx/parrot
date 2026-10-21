@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertDialog } from "@base-ui-components/react/alert-dialog";
 import { getJson, sendJson } from "@/components/api";
@@ -12,8 +13,11 @@ import styles from "./Library.module.css";
 
 export type LibraryDoc = Pick<DocumentRow, "id" | "title" | "last_page" | "page_count">;
 
-/** The home screen: open a new PDF, or reopen/remove a recent one. */
-export function Library({ initialDocs }: { initialDocs: LibraryDoc[] }) {
+/**
+ * The home screen: open a new PDF, reopen/remove a recent one, or go study flashcards
+ * (`dueCards` is how many are due for review).
+ */
+export function Library({ initialDocs, dueCards }: { initialDocs: LibraryDoc[]; dueCards: number }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [recent, setRecent] = useState<LibraryDoc[]>(initialDocs);
@@ -73,6 +77,15 @@ export function Library({ initialDocs }: { initialDocs: LibraryDoc[] }) {
         <button className={styles.newFile} onClick={openPicker} disabled={uploading}>
           <span>{uploading ? "Opening…" : "New file"}</span>
         </button>
+
+        <Link href="/flashcards" className={styles.newFile}>
+          <span>Flashcards</span>
+          {dueCards > 0 && (
+            <span className={styles.dueBadge} title="Cards due for review">
+              {dueCards} due
+            </span>
+          )}
+        </Link>
 
         <input
           ref={inputRef}

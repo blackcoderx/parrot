@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { Popover } from "@base-ui-components/react/popover";
 import { Select } from "@base-ui-components/react/select";
 import { getJson, sendJson } from "@/components/api";
@@ -8,6 +9,7 @@ import type { OutlineNode } from "./outline";
 import type { CardSource, Flashcard } from "./types";
 import Markdown from "./Markdown";
 import { ModeToggle } from "./ModeToggle";
+import { StatusBadge } from "@/components/flashcards/status";
 import buttons from "./buttons.module.css";
 import styles from "./Flashcards.module.css";
 
@@ -224,6 +226,11 @@ export function Flashcards({
               )}
               <span className={styles.flashHeaderActions}>
                 {view.kind === "review" && (
+                  <Link className={styles.flashStudyLink} href="/flashcards" title="Study cards from every document">
+                    Study all
+                  </Link>
+                )}
+                {view.kind === "review" && (
                   <button
                     className={styles.flashIconBtn}
                     onClick={onNewCard}
@@ -424,7 +431,6 @@ function CardView({
   const [revealed, setRevealed] = useState(false);
   const [hintShown, setHintShown] = useState(false);
   const source = cardSource(card);
-  const hasMeta = source !== null || card.tags.length > 0;
 
   return (
     <div className={styles.flashSlide} data-direction={direction}>
@@ -442,30 +448,29 @@ function CardView({
           }
         }}
       >
-        <div className={styles.flashFace} data-meta={hasMeta || undefined} aria-hidden={revealed}>
-          {hasMeta && (
-            <div className={styles.flashMeta}>
-              {source && (
-                <button
-                  className={styles.flashSource}
-                  tabIndex={revealed ? -1 : 0}
-                  title="Go to where this card came from"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onJump(source.page, source.y);
-                  }}
-                  onKeyDown={(e) => e.stopPropagation()}
-                >
-                  {formatSource(source)}
-                </button>
-              )}
-              {card.tags.map((t) => (
-                <span key={t} className={styles.flashTag}>
-                  {t}
-                </span>
-              ))}
-            </div>
-          )}
+        <div className={styles.flashFace} data-meta aria-hidden={revealed}>
+          <div className={styles.flashMeta}>
+            {source && (
+              <button
+                className={styles.flashSource}
+                tabIndex={revealed ? -1 : 0}
+                title="Go to where this card came from"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onJump(source.page, source.y);
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
+              >
+                {formatSource(source)}
+              </button>
+            )}
+            {card.tags.map((t) => (
+              <span key={t} className={styles.flashTag}>
+                {t}
+              </span>
+            ))}
+            <StatusBadge status={card.status} />
+          </div>
           <span className={styles.flashLabel}>Question</span>
           <CardText text={card.question} />
           {card.hint &&
@@ -497,7 +502,7 @@ function CardView({
 }
 
 /** Card text rendered as Markdown + LaTeX. Clicking a link opens it without flipping the card. */
-function CardText({ text, hint }: { text: string; hint?: boolean }) {
+export function CardText({ text, hint }: { text: string; hint?: boolean }) {
   return (
     <div
       className={hint ? styles.flashHint : styles.flashText}
@@ -827,13 +832,13 @@ function addTag(tags: string[], raw: string): string[] {
 }
 
 /** A card's source, or null for cards made without one. */
-function cardSource(card: Flashcard): CardSource | null {
+export function cardSource(card: Flashcard): CardSource | null {
   if (card.page === null) return null;
   return { page: card.page, y: card.y, section_id: card.section_id, section: card.section };
 }
 
 /** "§ 3.2 Attention · p. 14", or just "p. 14" outside any section. */
-function formatSource(source: CardSource): string {
+export function formatSource(source: CardSource): string {
   return source.section ? `§ ${source.section} · p. ${source.page}` : `p. ${source.page}`;
 }
 
@@ -881,7 +886,7 @@ function sectionFilters(cards: Flashcard[], outline: OutlineNode[] | null): Filt
 }
 
 /** Tag filters: every tag in use (first spelling wins), alphabetically. */
-function tagFilters(cards: Flashcard[]): FilterOption[] {
+export function tagFilters(cards: Flashcard[]): FilterOption[] {
   const tags = new Map<string, string>();
   for (const c of cards) {
     for (const t of c.tags) if (!tags.has(t.toLowerCase())) tags.set(t.toLowerCase(), t);

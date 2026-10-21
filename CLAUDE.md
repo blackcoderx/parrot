@@ -40,7 +40,8 @@ never in the repo:
 
 `app/lib/paths.ts` resolves those paths; `app/lib/db.ts` opens the better-sqlite3 singleton and
 runs `CREATE TABLE IF NOT EXISTS` migrations on import (tables: `documents`, `highlights`, `chats`,
-`messages`, `settings`, `flashcards`, `outlines`, `focus_sessions`).
+`messages`, `settings`, `flashcards`, `flashcard_reviews`, `outlines`, `focus_sessions`).
+The singleton is cached on `globalThis` in dev, so **restart `next dev` after adding a migration**.
 
 **Server boundary.** Everything in `app/lib/*` starts with `import "server-only"` and may only be
 imported from server code — Route Handlers under `app/app/api/**` and server components such as
@@ -88,6 +89,18 @@ popover filters by section — an outline id matches its dotted-path descendants
 the card's source chip jumps back via `jumpTo`. Notes render through the same `Markdown.tsx`:
 `NoteEditor` opens a saved note rendered (Edit / double-click to edit; Write / Preview via the
 shared `ModeToggle`), and the Notes tab uses its `inline` mode for one-line previews.
+
+**Spaced repetition (FSRS).** The `/flashcards` page (`app/app/flashcards/page.tsx` →
+`components/flashcards/`) lists cards from every document and runs study sessions. Scheduling is
+`ts-fsrs`, wrapped server-side in `lib/srs.ts` (90% target recall, fuzz, 1m/10m learning steps).
+A card's memory state is the `srs` JSON column (NULL = new) with `due` copied out for querying;
+every grade is logged in `flashcard_reviews`. `POST /api/flashcards/[id]/review` (`{ rating: 1..4 }`
+= Again/Hard/Good/Easy) is the only writer. `status` (new / learning / familiar / confident /
+mastered) is derived from the FSRS state and stability (7 and 21 days) and can't be set by hand.
+`StudyCard`s carry `intervals` (ms until due per grade) for the grade-button labels. The session queue
+is built on the client (`buildQueue`): due cards plus up to 20 new a day (counted by
+`/api/flashcards/today` against the client's local midnight), interleaved; cards on a learning
+step come back within the session. Source links use `/read/[id]?page=N`.
 
 **Focus timer (Pomodoro).** `TimerProvider` (`app/components/timer/`) is mounted in the root layout,
 so it keeps running across the library and every document; `TimerButton`s in the reader toolbar

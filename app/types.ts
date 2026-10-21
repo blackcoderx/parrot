@@ -60,6 +60,34 @@ export interface Flashcard {
   tags: string[];
   created_at: number;
   updated_at: number;
+  /** When the scheduler next wants the card (epoch ms), or null for a card never studied. */
+  due: number | null;
+  /** How well the card is known, derived from its FSRS memory state (see lib/srs.ts). */
+  status: CardStatus;
+  /** Times studied, and times forgotten after being learned. */
+  reps: number;
+  lapses: number;
+}
+
+/** A card's place on the way to long-term memory; set by the scheduler, not the reader. */
+export type CardStatus = "new" | "learning" | "familiar" | "confident" | "mastered";
+
+/** A study grade: 1 Again (forgot), 2 Hard, 3 Good, 4 Easy. */
+export type Grade = 1 | 2 | 3 | 4;
+
+/** A card on the study page: from any document, with what each grade would schedule. */
+export interface StudyCard extends Flashcard {
+  document_title: string;
+  /** Milliseconds until the card is due again after each grade, Again..Easy. */
+  intervals: [number, number, number, number];
+}
+
+/** Study done since the reader's local midnight. */
+export interface StudyToday {
+  /** Grades given. */
+  reviewed: number;
+  /** New cards studied for the first time. */
+  introduced: number;
 }
 
 export interface Message {

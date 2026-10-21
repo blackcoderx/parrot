@@ -3,17 +3,32 @@ import "server-only";
 import Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
 import { DB_PATH, ensureDirs } from "./paths";
-import type { CardSource, DocumentRow, Flashcard, Highlight, Message, NormRect } from "@/types";
+import { intervals, statusOf, type Srs } from "./srs";
+import type {
+  CardSource,
+  DocumentRow,
+  Flashcard,
+  Grade,
+  Highlight,
+  Message,
+  NormRect,
+  StudyCard,
+  StudyToday,
+} from "@/types";
 
 // Shape as stored in SQLite (rects is a JSON string column).
 interface HighlightDbRow extends Omit<Highlight, "rects"> {
   rects: string;
 }
 
-// Shape as stored in SQLite (tags is a JSON string column).
-interface FlashcardDbRow extends Omit<Flashcard, "tags"> {
+// Shape as stored in SQLite (tags and srs are JSON string columns; status, reps and lapses are
+// derived from srs).
+interface FlashcardDbRow extends Omit<Flashcard, "tags" | "status" | "reps" | "lapses"> {
   tags: string;
+  srs: string | null;
 }
+
+type StudyCardDbRow = FlashcardDbRow & { document_title: string };
 
 const globalForDb = globalThis as unknown as { parrotDb?: Database.Database };
 
@@ -83,9 +98,23 @@ function createDb(): Database.Database {
       section     TEXT,
       tags        TEXT NOT NULL DEFAULT '[]',
       created_at  INTEGER NOT NULL,
-      updated_at  INTEGER NOT NULL
+      updated_at  INTEGER NOT NULL,
+      srs         TEXT,    -- FSRS memory state (lib/srs.ts); NULL until first studied
+      due         INTEGER  -- srs.due, kept as a column for querying
     );
     CREATE INDEX IF NOT EXISTS idx_flashcards_document ON flashcards(document_id);
+
+    -- Every grade given while studying. state is the card's FSRS state before the grade
+    -- (0 = new), so first-time studies can be counted.
+    CREATE TABLE IF NOT EXISTS flashcard_reviews (
+      id          TEXT PRIMARY KEY,
+      card_id     TEXT NOT NULL REFERENCES flashcards(id) ON DELETE CASCADE,
+      rating      INTEGER NOT NULL,
+      state       INTEGER NOT NULL,
+      reviewed_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_flashcard_reviews_card ON flashcard_reviews(card_id);
+    CREATE INDEX IF NOT EXISTS idx_flashcard_reviews_time ON flashcard_reviews(reviewed_at);
 
     -- Resolved PDF outline (table of contents), cached so it's instant on reopen.
     -- Stored PDFs never change, so an entry stays valid until its format version bumps.
@@ -121,6 +150,9 @@ function createDb(): Database.Database {
   addColumn("flashcards", "section_id", "TEXT");
   addColumn("flashcards", "section", "TEXT");
   addColumn("flashcards", "tags", "TEXT NOT NULL DEFAULT '[]'");
+  addColumn("flashcards", "srs", "TEXT");
+  addColumn("flashcards", "due", "INTEGER");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_flashcards_due ON flashcards(due)");
 
   // Threads orphaned by highlight deletes before deleteHighlight removed them too. Every
   // saved thread has an anchor, so an anchorless chat can never be reopened.
@@ -219,7 +251,81 @@ export function saveOutline(documentId: string, version: number, data: string): 
 // ---------------------------------------------------------------------------
 
 function toFlashcard(row: FlashcardDbRow): Flashcard {
-  return { ...row, tags: JSON.parse(row.tags) as string[] };
+  const { srs: raw, ...rest } = row;
+  const srs = parseSrs(raw);
+  return {
+    ...rest,
+    tags: JSON.parse(row.tags) as string[],
+    status: statusOf(srs),
+    reps: srs?.reps ?? 0,
+    lapses: srs?.lapses ?? 0,
+  };
+}
+
+function parseSrs(raw: string | null): Srs | null {
+  return raw ? (JSON.parse(raw) as Srs) : null;
+}
+
+function toStudyCard(row: StudyCardDbRow, now: number): StudyCard {
+  const { document_title, ...card } = row;
+  return { ...toFlashcard(card), document_title, intervals: intervals(parseSrs(row.srs), now) };
+}
+
+const STUDY_CARD_SELECT = `SELECT f.*, d.title AS document_title
+                             FROM flashcards f JOIN documents d ON d.id = f.document_id`;
+
+/** Every card from every document, with what each grade would schedule as of `now`. */
+export function listStudyCards(now = Date.now()): StudyCard[] {
+  const rows = db
+    .prepare(`${STUDY_CARD_SELECT} ORDER BY d.opened_at DESC, f.created_at ASC`)
+    .all() as StudyCardDbRow[];
+  return rows.map((row) => toStudyCard(row, now));
+}
+
+/** Cards studied before and due again by `now` (new cards aren't counted). */
+export function countDueFlashcards(now = Date.now()): number {
+  const row = db.prepare("SELECT COUNT(*) AS n FROM flashcards WHERE due <= ?").get(now) as {
+    n: number;
+  };
+  return row.n;
+}
+
+/** A card's memory state: null if never studied, undefined if there's no such card. */
+export function getFlashcardSrs(id: string): Srs | null | undefined {
+  const row = db.prepare("SELECT srs FROM flashcards WHERE id = ?").get(id) as
+    | { srs: string | null }
+    | undefined;
+  return row && parseSrs(row.srs);
+}
+
+/**
+ * Store a grade: `next` (from lib/srs.ts `review`) becomes the card's memory state and the
+ * grade is logged, in one transaction. `before` is the state it was graded from. Returns the
+ * updated card, or undefined if it no longer exists.
+ */
+export const recordReview = db.transaction(
+  (id: string, grade: Grade, before: Srs | null, next: Srs, now: number): StudyCard | undefined => {
+    const updated = db
+      .prepare("UPDATE flashcards SET srs = ?, due = ? WHERE id = ?")
+      .run(JSON.stringify(next), next.due, id);
+    if (!updated.changes) return undefined;
+    db.prepare(
+      `INSERT INTO flashcard_reviews (id, card_id, rating, state, reviewed_at)
+       VALUES (?, ?, ?, ?, ?)`,
+    ).run(randomUUID(), id, grade, before?.state ?? 0, now);
+    const row = db.prepare(`${STUDY_CARD_SELECT} WHERE f.id = ?`).get(id) as StudyCardDbRow;
+    return toStudyCard(row, now);
+  },
+);
+
+/** Grades given, and new cards studied for the first time, since `since` (epoch ms). */
+export function studyCountsSince(since: number): StudyToday {
+  return db
+    .prepare(
+      `SELECT COUNT(*) AS reviewed, COALESCE(SUM(state = 0), 0) AS introduced
+         FROM flashcard_reviews WHERE reviewed_at >= ?`,
+    )
+    .get(since) as StudyToday;
 }
 
 export function listFlashcards(documentId: string): Flashcard[] {
