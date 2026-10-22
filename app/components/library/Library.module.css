@@ -77,13 +77,164 @@
   padding-top: 16px;
 }
 
+.recentHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
 .recentTitle {
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--muted);
-  margin-bottom: 8px;
+}
+
+/* "View all" arrow at the right of the Recent files heading */
+.allTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.allTrigger:hover,
+.allTrigger[data-popup-open] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* All files dialog: centred on the page over a dimmed, blurred backdrop. */
+.allBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(2, 1, 0, 0.32);
+  backdrop-filter: blur(3px);
+  transition: opacity 0.3s ease, backdrop-filter 0.3s ease;
+}
+
+.allBackdrop[data-starting-style],
+.allBackdrop[data-ending-style] {
+  opacity: 0;
+  backdrop-filter: blur(0);
+}
+
+.allPopup {
+  position: fixed;
+  z-index: 30;
+  top: 50%;
+  left: 50%;
+  width: 460px;
+  max-width: calc(100vw - 32px);
+  max-height: min(560px, calc(100vh - 64px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 10px 10px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(2, 1, 0, 0.24);
+  outline: none;
+  transform: translate(-50%, -50%);
+  /* Rises gently into place with a soft ease-out; leaves a little quicker. */
+  transition:
+    opacity 0.25s ease-out,
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.allPopup[data-starting-style],
+.allPopup[data-ending-style] {
+  opacity: 0;
+  transform: translate(-50%, calc(-50% + 12px)) scale(0.96);
+}
+
+.allPopup[data-ending-style] {
+  transition:
+    opacity 0.18s ease-in,
+    transform 0.2s ease-in;
+}
+
+/* Recede slightly while the remove confirmation sits on top. */
+.allPopup[data-nested-dialog-open] {
+  transform: translate(-50%, -50%) scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .allPopup,
+  .allPopup[data-ending-style] {
+    transition: opacity 0.15s ease;
+  }
+  .allPopup[data-starting-style],
+  .allPopup[data-ending-style],
+  .allPopup[data-nested-dialog-open] {
+    transform: translate(-50%, -50%);
+  }
+}
+
+.allHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 6px;
+}
+
+.allClose {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--muted);
+  transition: color 0.12s ease;
+}
+
+.allClose:hover {
+  color: var(--foreground);
+}
+
+.allTitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.allCount {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.allSearch {
+  margin: 0 4px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.allSearch:focus {
+  border-color: var(--accent);
+}
+
+/* The full list scrolls inside the dialog instead of growing the page. */
+.allList {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .empty {
@@ -247,6 +398,8 @@
 .dialogBackdrop {
   position: fixed;
   inset: 0;
+  /* Above the All files dialog, which can open it. */
+  z-index: 40;
   background: rgba(2, 1, 0, 0.4);
   transition: opacity 0.15s ease;
 }
@@ -258,6 +411,7 @@
 
 .dialogPopup {
   position: fixed;
+  z-index: 40;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);

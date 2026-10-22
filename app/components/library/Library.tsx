@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertDialog } from "@base-ui-components/react/alert-dialog";
+import { Dialog } from "@base-ui-components/react/dialog";
 import { getJson, sendJson } from "@/components/api";
 import { SettingsPopover } from "@/components/settings/SettingsPopover";
 import { TimerButton } from "@/components/timer/TimerButton";
@@ -12,6 +13,9 @@ import type { DocumentRow } from "@/types";
 import styles from "./Library.module.css";
 
 export type LibraryDoc = Pick<DocumentRow, "id" | "title" | "last_page" | "page_count">;
+
+/** Recent files listed on the home screen; every file is in the All files popover. */
+const RECENT_LIMIT = 5;
 
 /**
  * The home screen: open a new PDF, reopen/remove a recent one, or go study flashcards
@@ -45,6 +49,18 @@ export function Library({ initialDocs, dueCards }: { initialDocs: LibraryDoc[]; 
     setTitle(title); // optimistic
     const res = await sendJson(`/api/documents/${id}`, "PATCH", { title }).catch(() => null);
     if (!res?.ok && previous !== undefined) setTitle(previous);
+  }
+
+  function renderRow(doc: LibraryDoc) {
+    return (
+      <LibraryRow
+        key={doc.id}
+        doc={doc}
+        onOpen={() => router.push(`/read/${doc.id}`)}
+        onRename={(title) => rename(doc.id, title)}
+        onRemove={() => remove(doc.id)}
+      />
+    );
   }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -96,21 +112,14 @@ export function Library({ initialDocs, dueCards }: { initialDocs: LibraryDoc[]; 
         />
 
         <section className={styles.recent}>
-          <h2 className={styles.recentTitle}>Recent files</h2>
+          <div className={styles.recentHeader}>
+            <h2 className={styles.recentTitle}>Recent files</h2>
+            {recent.length > 0 && <AllFiles docs={recent} renderRow={renderRow} />}
+          </div>
           {recent.length === 0 ? (
             <p className={styles.empty}>No documents yet.</p>
           ) : (
-            <ul className={styles.list}>
-              {recent.map((doc) => (
-                <LibraryRow
-                  key={doc.id}
-                  doc={doc}
-                  onOpen={() => router.push(`/read/${doc.id}`)}
-                  onRename={(title) => rename(doc.id, title)}
-                  onRemove={() => remove(doc.id)}
-                />
-              ))}
-            </ul>
+            <ul className={styles.list}>{recent.slice(0, RECENT_LIMIT).map(renderRow)}</ul>
           )}
         </section>
       </main>
@@ -120,6 +129,52 @@ export function Library({ initialDocs, dueCards }: { initialDocs: LibraryDoc[]; 
         <TimerButton className={styles.timerBtn} clockClassName={styles.timerClock} />
       </div>
     </div>
+  );
+}
+
+/** Every file, most recently opened first, in a scrollable dialog with a search box. */
+function AllFiles({
+  docs,
+  renderRow,
+}: {
+  docs: LibraryDoc[];
+  renderRow: (doc: LibraryDoc) => React.ReactNode;
+}) {
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const shown = q ? docs.filter((d) => d.title.toLowerCase().includes(q)) : docs;
+
+  return (
+    <Dialog.Root onOpenChange={(open) => !open && setQuery("")}>
+      <Dialog.Trigger className={styles.allTrigger} aria-label="View all files" title="View all">
+        <ArrowIcon />
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Backdrop className={styles.allBackdrop} />
+        <Dialog.Popup className={styles.allPopup}>
+          <div className={styles.allHeader}>
+            <Dialog.Title className={styles.allTitle}>All files</Dialog.Title>
+            <span className={styles.allCount}>{docs.length}</span>
+            <Dialog.Close className={styles.allClose} aria-label="Close">
+              ×
+            </Dialog.Close>
+          </div>
+          <input
+            className={styles.allSearch}
+            type="search"
+            placeholder="Search files"
+            aria-label="Search files"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {shown.length === 0 ? (
+            <p className={styles.empty}>No files match.</p>
+          ) : (
+            <ul className={`${styles.list} ${styles.allList}`}>{shown.map(renderRow)}</ul>
+          )}
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
@@ -222,6 +277,20 @@ function LibraryRow({ doc, onOpen, onRename, onRemove }: RowProps) {
         </div>
       )}
     </li>
+  );
+}
+
+function ArrowIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M7 17L17 7M9 7h8v8"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
