@@ -147,12 +147,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
 }
 
 .controls > button {
-  min-width: 64px;
+  white-space: nowrap;
+}
+
+/* Start / Pause / Resume: wide enough for "Resume" so the button doesn't change size between
+   states, and never shrunk below that (an explicit min-width overrides a flex item's default
+   min-content floor, which let "Resume" overflow its padding). */
+.mainBtn {
+  flex-shrink: 0;
+  min-width: 80px;
 }
 
 .ghostBtn {

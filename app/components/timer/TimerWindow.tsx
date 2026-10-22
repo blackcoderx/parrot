@@ -78,11 +78,11 @@ export function TimerWindow() {
               Reset
             </button>
             {running ? (
-              <button className={buttons.askSave} onClick={timer.pause}>
+              <button className={`${buttons.askSave} ${styles.mainBtn}`} onClick={timer.pause}>
                 Pause
               </button>
             ) : (
-              <button className={buttons.askSend} onClick={timer.start} disabled={!settings}>
+              <button className={`${buttons.askSend} ${styles.mainBtn}`} onClick={timer.start} disabled={!settings}>
                 {state.status === "paused" ? "Resume" : "Start"}
               </button>
             )}
@@ -167,7 +167,7 @@ function SettingsForm({ settings, onDone }: { settings: TimerSettings; onDone: (
         <button type="button" className={styles.ghostBtn} onClick={onDone}>
           Cancel
         </button>
-        <button type="submit" className={buttons.askSend} disabled={saving}>
+        <button type="submit" className={`${buttons.askSend} ${styles.mainBtn}`} disabled={saving}>
           {saving ? "…" : "Save"}
         </button>
       </div>
