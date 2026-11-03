@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Popover } from "@base-ui-components/react/popover";
 import { HIGHLIGHT_COLORS } from "./types";
-import { NoteIcon } from "./NoteIcon";
 import { READING_MODES, type ReadingMode } from "./readingMode";
 import { TimerButton } from "@/components/timer/TimerButton";
 import styles from "./Toolbar.module.css";
@@ -183,7 +182,7 @@ export function Toolbar({
         aria-pressed={noteMode}
         title="Note pen — select a region to note"
       >
-        <NoteIcon />
+        <NotePenIcon />
       </button>
 
       <span className={styles.divider} aria-hidden />
@@ -254,16 +253,45 @@ function ReadingModeIcon({ mode }: { mode: ReadingMode }) {
   );
 }
 
+// The pen and flashcard glyphs are Tabler's outline "sparkles", "pencil" and "cards" (MIT).
+
+/** Two fanned cards. */
 function FlashcardsIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <rect x="3.5" y="7" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="1.6" />
-      <path
-        d="M7.5 4h11A2 2 0 0 1 20.5 6v11"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M3.604 7.197l7.138 -3.109a.96 .96 0 0 1 1.27 .527l4.924 11.902a1 1 0 0 1 -.514 1.304l-7.137 3.109a.96 .96 0 0 1 -1.271 -.527l-4.924 -11.903a1 1 0 0 1 .514 -1.304z" />
+      <path d="M15 4h1a1 1 0 0 1 1 1v3.5" />
+      <path d="M20 6c.264 .112 .52 .217 .768 .315a1 1 0 0 1 .53 1.311l-2.298 5.374" />
+    </svg>
+  );
+}
+
+/** A pencil, for the Note pen. */
+function NotePenIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
     </svg>
   );
 }
@@ -290,16 +318,21 @@ function OutlineIcon() {
   );
 }
 
+/** Sparkles, for the AI pen. */
 function AiPenIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M4 20l4-1 10-10-3-3L5 16l-1 4z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-      <path d="M14 6l3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6z" />
     </svg>
   );
 }

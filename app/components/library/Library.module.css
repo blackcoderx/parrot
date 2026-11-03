@@ -127,6 +127,10 @@
 
 .nextAction {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   padding: 9px 16px;
   border-radius: var(--radius);
   background: var(--accent);
@@ -138,6 +142,22 @@
 
 .nextAction:hover {
   opacity: 0.9;
+}
+
+/* The arrow nudges forward on hover. */
+.nextAction svg {
+  transition: transform 0.2s ease;
+}
+
+.nextAction:hover svg,
+.nextAction:focus-visible svg {
+  transform: translateX(3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nextAction svg {
+    transition: none;
+  }
 }
 
 .onTrack {

@@ -68,7 +68,8 @@ export function StudyNext({ subjects, now }: { subjects: SubjectSummary[]; now: 
         </span>
       </div>
       <Link href={href} className={styles.nextAction}>
-        {NEXT_LABEL[action]} →
+        {NEXT_LABEL[action]}
+        <ArrowRightIcon />
       </Link>
     </section>
   );
@@ -427,6 +428,27 @@ export function PencilIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+/** Tabler's outline "arrow-right" (MIT). */
+function ArrowRightIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M5 12l14 0" />
+      <path d="M13 18l6 -6" />
+      <path d="M13 6l6 6" />
     </svg>
   );
 }
