@@ -62,9 +62,11 @@ export function StudyNext({ subjects, now }: { subjects: SubjectSummary[]; now: 
               ? "Not studied yet"
               : `Last studied ${formatStudied(s.last_studied, now)}`}
           </span>
-          {s.due > 0
-            ? ` · ${s.due} due`
-            : newCards > 0 && ` · ${newCards} new card${newCards === 1 ? "" : "s"}`}
+          {s.due > 0 ? (
+            <span>· {s.due} due</span>
+          ) : (
+            newCards > 0 && <span>· {newCards} new card{newCards === 1 ? "" : "s"}</span>
+          )}
         </span>
       </div>
       <Link href={href} className={styles.nextAction}>

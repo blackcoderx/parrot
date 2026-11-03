@@ -120,7 +120,12 @@
   color: var(--accent);
 }
 
+/* "Last studied …" and "· 8 due" on one centred line (the stale dot makes the first a flex box). */
 .nextMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 4px;
   font-size: 13px;
   color: var(--muted);
 }
