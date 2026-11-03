@@ -10,18 +10,24 @@ import { SettingsPopover } from "@/components/settings/SettingsPopover";
 import { TimerButton } from "@/components/timer/TimerButton";
 import { TrashIcon } from "@/components/TrashIcon";
 import type { DocumentRow, Subject, SubjectSummary } from "@/types";
-import { MoveMenu, PencilIcon, SubjectChooser, SubjectList, TitleInput } from "./Subjects";
+import { useNow } from "@/components/timer/TimerProvider";
+import {
+  MoveMenu,
+  PencilIcon,
+  StudyNext,
+  SubjectChooser,
+  SubjectGrid,
+  TitleInput,
+} from "./Subjects";
 import { lastSubject, uploadPdf } from "./upload";
 import styles from "./Library.module.css";
 
 export type LibraryDoc = Pick<DocumentRow, "id" | "title" | "last_page" | "page_count" | "subject_id">;
 
-/** Recent files listed on the home screen; every file is in the All files popover. */
-const RECENT_LIMIT = 5;
-
 /**
- * The home screen: your subjects (neglected ones first), open a new PDF, reopen/remove/move a
- * recent one, or go study flashcards (`dueCards` is how many are due for review).
+ * The home screen: the subject to study next, every subject (neglected ones first), the file
+ * you were last reading (every file is in the All files dialog), a new PDF, and the flashcards
+ * page (`dueCards` is how many are due for review).
  */
 export function Library({
   initialDocs,
@@ -40,6 +46,8 @@ export function Library({
   // A picked PDF waiting for its subject to be chosen.
   const [pending, setPending] = useState<File | null>(null);
   const [preselect, setPreselect] = useState<string | null>(null);
+  // "Last studied" ages move on their own; a minute's resolution is plenty.
+  const now = useNow(true, 60_000);
 
   const openPicker = useCallback(() => inputRef.current?.click(), []);
 
@@ -126,24 +134,27 @@ export function Library({
   return (
     <div className={styles.page}>
       <main className={styles.card}>
-        <h1 className={styles.wordmark}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/parrot-logo.png" alt="" className={styles.logo} />
-          Parrot<span className={styles.dot}>.</span>
-        </h1>
+        <header className={styles.topBar}>
+          <h1 className={styles.wordmark}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/parrot-logo.png" alt="" className={styles.logo} />
+            Parrot<span className={styles.dot}>.</span>
+          </h1>
 
-        <button className={styles.newFile} onClick={openPicker} disabled={uploading}>
-          <span>{uploading ? "Opening…" : "New file"}</span>
-        </button>
-
-        <Link href="/flashcards" className={styles.newFile}>
-          <span>Flashcards</span>
-          {dueCards > 0 && (
-            <span className={styles.dueBadge} title="Cards due for review">
-              {dueCards} due
-            </span>
-          )}
-        </Link>
+          <div className={styles.topActions}>
+            <button className={styles.topBtn} onClick={openPicker} disabled={uploading}>
+              {uploading ? "Opening…" : "New file"}
+            </button>
+            <Link href="/flashcards" className={styles.topBtn}>
+              Flashcards
+              {dueCards > 0 && (
+                <span className={styles.dueBadge} title="Cards due for review">
+                  {dueCards} due
+                </span>
+              )}
+            </Link>
+          </div>
+        </header>
 
         <input
           ref={inputRef}
@@ -160,19 +171,19 @@ export function Library({
           onCancel={() => setPending(null)}
         />
 
-        <SubjectList subjects={subjects} onChange={setSubjects} />
+        <StudyNext subjects={subjects} now={now} />
 
-        <section className={styles.recent}>
-          <div className={styles.recentHeader}>
-            <h2 className={styles.recentTitle}>Recent files</h2>
-            {recent.length > 0 && <AllFiles docs={recent} renderRow={renderRow} />}
-          </div>
-          {recent.length === 0 ? (
-            <p className={styles.empty}>No documents yet.</p>
-          ) : (
-            <ul className={styles.list}>{recent.slice(0, RECENT_LIMIT).map(renderRow)}</ul>
-          )}
-        </section>
+        <SubjectGrid subjects={subjects} now={now} onChange={setSubjects} />
+
+        {recent.length > 0 && (
+          <section className={styles.recent}>
+            <div className={styles.recentHeader}>
+              <h2 className={styles.recentTitle}>Continue reading</h2>
+              <AllFiles docs={recent} renderRow={renderRow} />
+            </div>
+            <ul className={styles.list}>{renderRow(recent[0])}</ul>
+          </section>
+        )}
       </main>
 
       <div className={styles.settings}>

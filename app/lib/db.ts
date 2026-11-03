@@ -255,7 +255,7 @@ export function deleteDocument(id: string): void {
 
 /**
  * Every subject with its file and card counts, cards due by `now`, and when it was last
- * studied (a card reviewed or a file read), least recently studied first.
+ * studied (a card reviewed or a file read), least recently studied first (then most due).
  */
 export function listSubjects(now = Date.now()): SubjectSummary[] {
   const rows = db
@@ -266,6 +266,10 @@ export function listSubjects(now = Date.now()): SubjectSummary[] {
                 WHERE d.subject_id = s.id) AS card_count,
               (SELECT COUNT(*) FROM flashcards f JOIN documents d ON d.id = f.document_id
                 WHERE d.subject_id = s.id AND f.due <= @now) AS due,
+              (SELECT COUNT(*) FROM flashcards f JOIN documents d ON d.id = f.document_id
+                WHERE d.subject_id = s.id AND (f.srs IS NULL OR f.due <= @now)) AS study_count,
+              (SELECT d.id FROM documents d WHERE d.subject_id = s.id
+                ORDER BY d.opened_at DESC LIMIT 1) AS last_doc_id,
               MAX(COALESCE((SELECT MAX(r.reviewed_at) FROM flashcard_reviews r
                               JOIN flashcards f ON f.id = r.card_id
                               JOIN documents d ON d.id = f.document_id
@@ -277,7 +281,12 @@ export function listSubjects(now = Date.now()): SubjectSummary[] {
     .all({ now }) as SubjectSummary[];
   return rows
     .map((r) => ({ ...r, last_studied: r.last_studied || null }))
-    .sort((a, b) => (a.last_studied ?? 0) - (b.last_studied ?? 0) || a.name.localeCompare(b.name));
+    .sort(
+      (a, b) =>
+        (a.last_studied ?? 0) - (b.last_studied ?? 0) ||
+        b.due - a.due ||
+        a.name.localeCompare(b.name),
+    );
 }
 
 export function getSubject(id: string): Subject | undefined {

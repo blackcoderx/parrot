@@ -103,10 +103,12 @@ is built on the client (`buildQueue`): due cards plus up to 20 new a day (counte
 step come back within the session. Source links use `/read/[id]?page=N`.
 
 **Subjects.** Each document sits under at most one school subject (`documents.subject_id`,
-`ON DELETE SET NULL`, so removing a subject leaves its files Unsorted). The home screen lists
-subjects least recently studied first (`listSubjects`: last card review or file read; 7+ days is
-flagged as stale, `components/subjects/studied.ts`), asks for a subject after a PDF is picked
-(`SubjectChooser`), and file rows have a Move-to-subject menu. `/subjects/[id]` has tabs for the
+`ON DELETE SET NULL`, so removing a subject leaves its files Unsorted). The home screen shows a
+Study next card (`pickStudyNext`) above a grid of subject tiles, least recently studied first
+(`listSubjects`: last card review or file read; 7+ days is flagged as stale,
+`components/subjects/studied.ts`), then just the last-read file (the rest are in All files). It
+asks for a subject after a PDF is picked (`SubjectChooser`), and file rows have a Move-to-subject
+menu. Study now links to `/subjects/[id]?study=1`, which starts a session on arrival. `/subjects/[id]` has tabs for the
 subject's flashcards, notes & highlights across its files, and its files. The flashcard deck
 (tiles, filters, list, study session) is the shared `components/flashcards/CardDeck.tsx`, used by
 both `/flashcards` and subject pages (`subjectId` scopes it).

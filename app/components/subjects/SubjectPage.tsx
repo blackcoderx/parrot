@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Tabs } from "@base-ui-components/react/tabs";
@@ -25,16 +25,30 @@ interface Props {
   initialDocs: LibraryDoc[];
   annotations: SubjectAnnotation[];
   initialCards: StudyCard[];
+  /** Start a study session straight away (the home screen's Study now, `?study=1`). */
+  autoStudy: boolean;
 }
 
 /** A subject's page: study its flashcards, review its notes and highlights, manage its files. */
-export function SubjectPage({ subject, subjects, initialDocs, annotations, initialCards }: Props) {
+export function SubjectPage({
+  subject,
+  subjects,
+  initialDocs,
+  annotations,
+  initialCards,
+  autoStudy,
+}: Props) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [docs, setDocs] = useState(initialDocs);
   const [uploading, setUploading] = useState(false);
   const [studying, setStudying] = useState(false);
   const now = useNow(true, 60_000);
+
+  // Drop ?study=1 so a refresh or Back doesn't start another session.
+  useEffect(() => {
+    if (autoStudy) window.history.replaceState(null, "", `/subjects/${subject.id}`);
+  }, [autoStudy, subject.id]);
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -115,7 +129,12 @@ export function SubjectPage({ subject, subjects, initialDocs, annotations, initi
         )}
 
         <Tabs.Panel value="cards" className={styles.panel}>
-          <CardDeck initialCards={initialCards} subjectId={subject.id} onStudyingChange={setStudying} />
+          <CardDeck
+            initialCards={initialCards}
+            subjectId={subject.id}
+            autoStudy={autoStudy}
+            onStudyingChange={setStudying}
+          />
         </Tabs.Panel>
 
         <Tabs.Panel value="notes" className={styles.panel}>

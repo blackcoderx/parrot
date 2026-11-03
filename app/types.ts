@@ -34,6 +34,10 @@ export interface SubjectSummary extends Subject {
   card_count: number;
   /** Cards due for review now. */
   due: number;
+  /** Cards a study session could take now: due ones plus never-studied ones. */
+  study_count: number;
+  /** The subject's most recently read document, or null if it has none. */
+  last_doc_id: string | null;
   /** Last card reviewed or file read in this subject (epoch ms), or null if never. */
   last_studied: number | null;
 }

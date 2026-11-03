@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Select } from "@base-ui-components/react/select";
 import { getJson } from "@/components/api";
@@ -58,6 +58,8 @@ interface Props {
   subjectId?: string;
   /** Subjects for the subject filter (when not kept to one). */
   subjects?: Subject[];
+  /** Start a study session as soon as today's counts are in (once per mount). */
+  autoStudy?: boolean;
   /** Told when a study session starts and ends, so the page can tidy around it. */
   onStudyingChange?: (studying: boolean) => void;
 }
@@ -66,7 +68,13 @@ interface Props {
  * Flashcards with spaced-repetition study: status tiles that filter, the Study button, the
  * subject / document / tag / search filters and the card list, or the running session.
  */
-export function CardDeck({ initialCards, subjectId, subjects = [], onStudyingChange }: Props) {
+export function CardDeck({
+  initialCards,
+  subjectId,
+  subjects = [],
+  autoStudy = false,
+  onStudyingChange,
+}: Props) {
   const inScope = useCallback(
     (c: StudyCard) => subjectId === undefined || c.subject_id === subjectId,
     [subjectId],
@@ -143,6 +151,14 @@ export function CardDeck({ initialCards, subjectId, subjects = [], onStudyingCha
     );
     if (queue.length) setSession(queue);
   }
+
+  // Wait for today's counts so the session respects the new-cards-per-day limit.
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (!autoStudy || today === null || autoStarted.current) return;
+    autoStarted.current = true;
+    startStudy();
+  });
 
   const onGraded = useCallback((card: StudyCard) => {
     setCards((prev) => prev.map((c) => (c.id === card.id ? card : c)));

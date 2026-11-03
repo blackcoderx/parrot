@@ -1,33 +1,95 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertDialog } from "@base-ui-components/react/alert-dialog";
 import { Dialog } from "@base-ui-components/react/dialog";
 import { Menu } from "@base-ui-components/react/menu";
 import { getJson, sendJson } from "@/components/api";
-import { formatStudied, isStale } from "@/components/subjects/studied";
-import { useNow } from "@/components/timer/TimerProvider";
-import { TrashIcon } from "@/components/TrashIcon";
+import {
+  formatStudied,
+  formatStudiedShort,
+  isStale,
+  pickStudyNext,
+  type StudyNextAction,
+} from "@/components/subjects/studied";
 import type { Subject, SubjectSummary } from "@/types";
 import styles from "./Library.module.css";
 
 const byName = (a: Subject, b: Subject) => a.name.localeCompare(b.name);
 
+const NEXT_LABEL: Record<StudyNextAction, string> = {
+  study: "Study now",
+  read: "Continue reading",
+  add: "Add a file",
+};
+
 /**
- * The home screen's subjects, least recently studied first so neglected ones come to the
- * top: open one, add one, or rename / remove one. `onChange` hears about every change.
+ * The home screen's suggestion: the one subject that needs you most (see `pickStudyNext`),
+ * with a single action — study its cards, read its last file, or give it a file.
  */
-export function SubjectList({
+export function StudyNext({ subjects, now }: { subjects: SubjectSummary[]; now: number }) {
+  if (subjects.length === 0) return null;
+  const pick = pickStudyNext(subjects, now);
+  if (!pick) {
+    return (
+      <p className={styles.onTrack}>
+        You&apos;re on track: nothing is due and every subject was studied this week.
+      </p>
+    );
+  }
+
+  const { subject: s, action } = pick;
+  const href =
+    action === "study"
+      ? `/subjects/${s.id}?study=1`
+      : action === "read"
+        ? `/read/${s.last_doc_id}`
+        : `/subjects/${s.id}`;
+  const newCards = s.study_count - s.due;
+
+  return (
+    <section className={styles.next} aria-label="Study next">
+      <div className={styles.nextText}>
+        <span className={styles.nextLabel}>Study next</span>
+        <Link href={`/subjects/${s.id}`} className={styles.nextName}>
+          {s.name}
+        </Link>
+        <span className={styles.nextMeta}>
+          <span className={styles.studied} data-stale={isStale(s.last_studied, now) || undefined}>
+            {s.last_studied === null
+              ? "Not studied yet"
+              : `Last studied ${formatStudied(s.last_studied, now)}`}
+          </span>
+          {s.due > 0
+            ? ` · ${s.due} due`
+            : newCards > 0 && ` · ${newCards} new card${newCards === 1 ? "" : "s"}`}
+        </span>
+      </div>
+      <Link href={href} className={styles.nextAction}>
+        {NEXT_LABEL[action]} →
+      </Link>
+    </section>
+  );
+}
+
+/**
+ * The home screen's subjects as a grid of tiles, least recently studied first so neglected
+ * ones lead: open one, add one, or rename / remove one from its ⋯ menu. `onChange` hears
+ * about every change.
+ */
+export function SubjectGrid({
   subjects,
+  now,
   onChange,
 }: {
   subjects: SubjectSummary[];
+  now: number;
   onChange: (subjects: SubjectSummary[]) => void;
 }) {
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const now = useNow(true, 60_000);
 
   const reload = () =>
     getJson<SubjectSummary[]>("/api/subjects")
@@ -62,7 +124,10 @@ export function SubjectList({
   return (
     <section className={styles.recent}>
       <div className={styles.recentHeader}>
-        <h2 className={styles.recentTitle}>Subjects</h2>
+        <h2 className={styles.recentTitle}>
+          Subjects
+          {subjects.length > 1 && <span className={styles.recentHint}> · most neglected first</span>}
+        </h2>
         <button
           className={styles.allTrigger}
           onClick={() => setAdding(true)}
@@ -76,9 +141,9 @@ export function SubjectList({
       {subjects.length === 0 && !adding ? (
         <p className={styles.empty}>Add the subjects you&apos;re taking to file your PDFs under them.</p>
       ) : (
-        <ul className={styles.list}>
+        <ul className={styles.grid}>
           {subjects.map((s) => (
-            <SubjectRow
+            <SubjectTile
               key={s.id}
               subject={s}
               now={now}
@@ -87,8 +152,8 @@ export function SubjectList({
             />
           ))}
           {adding && (
-            <li className={styles.rowWrap}>
-              <TitleInput label="Subject name" placeholder="e.g. Linear Algebra" onDone={add} />
+            <li className={styles.tile}>
+              <TitleInput label="Subject name" placeholder="Linear Algebra" onDone={add} />
             </li>
           )}
         </ul>
@@ -98,7 +163,8 @@ export function SubjectList({
   );
 }
 
-function SubjectRow({
+/** One subject: its name, cards due and how long since it was studied; ⋯ renames or removes it. */
+function SubjectTile({
   subject: s,
   now,
   onRename,
@@ -111,12 +177,11 @@ function SubjectRow({
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
-  const stale = isStale(s.last_studied, now);
-  const studied = formatStudied(s.last_studied, now);
+  const [confirming, setConfirming] = useState(false);
 
-  return (
-    <li className={styles.rowWrap}>
-      {editing ? (
+  if (editing) {
+    return (
+      <li className={styles.tile}>
         <TitleInput
           label="Subject name"
           defaultValue={s.name}
@@ -125,70 +190,76 @@ function SubjectRow({
             if (name && name !== s.name) onRename(name);
           }}
         />
-      ) : (
-        <button className={styles.row} onClick={() => router.push(`/subjects/${s.id}`)}>
-          <span className={styles.rowTitle}>{s.name}</span>
+      </li>
+    );
+  }
+
+  return (
+    <li className={styles.tile}>
+      <button className={styles.tileMain} onClick={() => router.push(`/subjects/${s.id}`)}>
+        <span className={styles.tileName} title={s.name}>
+          {s.name}
+        </span>
+        <span className={styles.tileMeta}>
           {s.due > 0 && (
             <span className={styles.dueBadge} title="Cards due for review">
-              {s.due} due
+              {s.due}
             </span>
           )}
-        </button>
-      )}
+          <span
+            className={styles.studied}
+            data-stale={isStale(s.last_studied, now) || undefined}
+            title={
+              s.last_studied === null
+                ? "Not studied yet"
+                : `Last studied ${formatStudied(s.last_studied, now)}`
+            }
+          >
+            {formatStudiedShort(s.last_studied, now)}
+          </span>
+        </span>
+      </button>
 
-      {!editing && (
-        <div className={styles.rowSide}>
-          <div className={styles.flip}>
-            <span
-              className={`${styles.face} ${styles.front} ${styles.studied}`}
-              data-stale={stale || undefined}
-              title={s.last_studied === null ? "Not studied yet" : `Last studied ${studied}`}
-            >
-              {studied}
-            </span>
-
-            <div className={`${styles.face} ${styles.back}`}>
-              <button
-                className={`${styles.rowAction} ${styles.rowEdit}`}
-                onClick={() => setEditing(true)}
-                aria-label={`Rename ${s.name}`}
-                title="Rename"
+      <Menu.Root>
+        <Menu.Trigger className={styles.tileMenu} aria-label={`More for ${s.name}`} title="More">
+          <DotsIcon />
+        </Menu.Trigger>
+        <Menu.Portal>
+          <Menu.Positioner className={styles.menuPositioner} side="bottom" align="end" sideOffset={4}>
+            <Menu.Popup className={styles.menuPopup}>
+              <Menu.Item className={styles.menuItem} onClick={() => setEditing(true)}>
+                Rename
+              </Menu.Item>
+              <Menu.Item
+                className={`${styles.menuItem} ${styles.menuDanger}`}
+                onClick={() => setConfirming(true)}
               >
-                <PencilIcon />
-              </button>
+                Remove
+              </Menu.Item>
+            </Menu.Popup>
+          </Menu.Positioner>
+        </Menu.Portal>
+      </Menu.Root>
 
-              <AlertDialog.Root>
-                <AlertDialog.Trigger
-                  className={`${styles.rowAction} ${styles.rowDelete}`}
-                  aria-label={`Remove ${s.name}`}
-                  title="Remove"
-                >
-                  <TrashIcon />
-                </AlertDialog.Trigger>
-                <AlertDialog.Portal>
-                  <AlertDialog.Backdrop className={styles.dialogBackdrop} />
-                  <AlertDialog.Popup className={styles.dialogPopup}>
-                    <AlertDialog.Title className={styles.dialogTitle}>
-                      Remove “{s.name}”?
-                    </AlertDialog.Title>
-                    <AlertDialog.Description className={styles.dialogDesc}>
-                      {s.doc_count === 0
-                        ? "It has no files."
-                        : `Its ${s.doc_count === 1 ? "file stays" : `${s.doc_count} files stay`} in your library as Unsorted, with every note and flashcard.`}
-                    </AlertDialog.Description>
-                    <div className={styles.dialogActions}>
-                      <AlertDialog.Close className={styles.dialogCancel}>Cancel</AlertDialog.Close>
-                      <AlertDialog.Close className={styles.dialogConfirm} onClick={onRemove}>
-                        Remove
-                      </AlertDialog.Close>
-                    </div>
-                  </AlertDialog.Popup>
-                </AlertDialog.Portal>
-              </AlertDialog.Root>
+      <AlertDialog.Root open={confirming} onOpenChange={setConfirming}>
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop className={styles.dialogBackdrop} />
+          <AlertDialog.Popup className={styles.dialogPopup}>
+            <AlertDialog.Title className={styles.dialogTitle}>Remove “{s.name}”?</AlertDialog.Title>
+            <AlertDialog.Description className={styles.dialogDesc}>
+              {s.doc_count === 0
+                ? "It has no files."
+                : `Its ${s.doc_count === 1 ? "file stays" : `${s.doc_count} files stay`} in your library as Unsorted, with every note and flashcard.`}
+            </AlertDialog.Description>
+            <div className={styles.dialogActions}>
+              <AlertDialog.Close className={styles.dialogCancel}>Cancel</AlertDialog.Close>
+              <AlertDialog.Close className={styles.dialogConfirm} onClick={onRemove}>
+                Remove
+              </AlertDialog.Close>
             </div>
-          </div>
-        </div>
-      )}
+          </AlertDialog.Popup>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
     </li>
   );
 }
@@ -356,6 +427,16 @@ export function PencilIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function DotsIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <circle cx="5" cy="12" r="1.7" />
+      <circle cx="12" cy="12" r="1.7" />
+      <circle cx="19" cy="12" r="1.7" />
     </svg>
   );
 }

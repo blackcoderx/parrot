@@ -9,26 +9,32 @@
 
 .card {
   width: 100%;
-  max-width: 420px;
+  max-width: 720px;
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
+/* Top bar: wordmark on the left, New file and Flashcards on the right. */
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .wordmark {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 650;
   letter-spacing: -0.02em;
-  text-align: center;
-  margin-bottom: 4px;
 }
 
 .logo {
-  height: 34px;
+  height: 30px;
   width: auto;
 }
 
@@ -36,26 +42,37 @@
   color: var(--accent);
 }
 
-/* New file button */
-.newFile {
+.topActions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 12px 14px;
+  gap: 8px;
+}
+
+.topBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--background);
-  font-size: 14px;
+  color: var(--foreground);
+  font-size: 13px;
   font-weight: 500;
-  transition: border-color 0.12s ease, background 0.12s ease;
+  transition: border-color 0.12s ease;
 }
 
-.newFile:hover:not(:disabled) {
+.topBtn:hover:not(:disabled) {
   border-color: var(--accent);
 }
 
-/* "12 due" on the Flashcards link */
+.topBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* "12 due" on the Flashcards link and subject tiles */
 .dueBadge {
   padding: 2px 8px;
   border-radius: 999px;
@@ -66,9 +83,153 @@
   font-variant-numeric: tabular-nums;
 }
 
-.newFile:disabled {
-  opacity: 0.6;
-  cursor: default;
+/* Study next: the one subject that needs you most, with a single action. */
+.next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+}
+
+.nextText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nextLabel {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.nextName {
+  align-self: flex-start;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.nextName:hover {
+  color: var(--accent);
+}
+
+.nextMeta {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.nextAction {
+  flex-shrink: 0;
+  padding: 9px 16px;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--porcelain);
+  font-size: 13px;
+  font-weight: 600;
+  transition: opacity 0.12s ease;
+}
+
+.nextAction:hover {
+  opacity: 0.9;
+}
+
+.onTrack {
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Subject tiles, four to a row. */
+.grid {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tile {
+  position: relative;
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--background);
+  transition: border-color 0.12s ease;
+}
+
+.tile:hover {
+  border-color: var(--accent);
+}
+
+.tileMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  color: var(--foreground);
+  text-align: left;
+}
+
+.tileName {
+  max-width: 100%;
+  /* Leave room for the ⋯ button in the corner. */
+  padding-right: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.tileMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ⋯ on a tile: shown on hover or keyboard focus, and while its menu is open. */
+.tileMenu {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+
+.tile:hover .tileMenu,
+.tile:focus-within .tileMenu,
+.tileMenu[data-popup-open] {
+  opacity: 1;
+}
+
+.tileMenu:hover,
+.tileMenu[data-popup-open] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 /* Recent files */
@@ -90,6 +251,27 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--muted);
+}
+
+/* "· most neglected first" after the Subjects heading */
+.recentHint {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Two tiles to a row on narrow screens; Study next stacks its action under the text. */
+@media (max-width: 560px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .next {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .nextAction {
+    text-align: center;
+  }
 }
 
 /* "View all" arrow at the right of the Recent files heading */
@@ -304,13 +486,12 @@
   color: var(--muted);
 }
 
-.row .dueBadge {
-  flex-shrink: 0;
-  margin-left: auto;
-  margin-right: 8px;
+/* When a subject was last studied; neglected ones turn accent with a dot. */
+.studied {
+  display: inline-flex;
+  align-items: center;
 }
 
-/* When a subject was last studied; neglected ones turn accent with a dot. */
 .studied[data-stale] {
   gap: 6px;
   color: var(--accent);
@@ -565,6 +746,10 @@
 
 .menuItem[data-checked] {
   color: var(--accent);
+}
+
+.menuDanger[data-highlighted] {
+  color: #dc2626;
 }
 
 .menuItemText {
