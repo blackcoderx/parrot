@@ -59,7 +59,7 @@ export function AnnotationList({ highlights, onJump }: Props) {
 }
 
 /** A note glyph, an accent dot for a saved thread, or the highlight's own colour. */
-function KindMarker({ highlight: h }: { highlight: Highlight }) {
+export function KindMarker({ highlight: h }: { highlight: Highlight }) {
   if (h.note !== null) {
     return (
       <span className={styles.annotationMarker} data-kind="note" aria-label="Note">

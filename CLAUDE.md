@@ -40,7 +40,7 @@ never in the repo:
 
 `app/lib/paths.ts` resolves those paths; `app/lib/db.ts` opens the better-sqlite3 singleton and
 runs `CREATE TABLE IF NOT EXISTS` migrations on import (tables: `documents`, `highlights`, `chats`,
-`messages`, `settings`, `flashcards`, `flashcard_reviews`, `outlines`, `focus_sessions`).
+`messages`, `settings`, `flashcards`, `flashcard_reviews`, `outlines`, `focus_sessions`, `subjects`).
 The singleton is cached on `globalThis` in dev, so **restart `next dev` after adding a migration**.
 
 **Server boundary.** Everything in `app/lib/*` starts with `import "server-only"` and may only be
@@ -101,6 +101,15 @@ mastered) is derived from the FSRS state and stability (7 and 21 days) and can't
 is built on the client (`buildQueue`): due cards plus up to 20 new a day (counted by
 `/api/flashcards/today` against the client's local midnight), interleaved; cards on a learning
 step come back within the session. Source links use `/read/[id]?page=N`.
+
+**Subjects.** Each document sits under at most one school subject (`documents.subject_id`,
+`ON DELETE SET NULL`, so removing a subject leaves its files Unsorted). The home screen lists
+subjects least recently studied first (`listSubjects`: last card review or file read; 7+ days is
+flagged as stale, `components/subjects/studied.ts`), asks for a subject after a PDF is picked
+(`SubjectChooser`), and file rows have a Move-to-subject menu. `/subjects/[id]` has tabs for the
+subject's flashcards, notes & highlights across its files, and its files. The flashcard deck
+(tiles, filters, list, study session) is the shared `components/flashcards/CardDeck.tsx`, used by
+both `/flashcards` and subject pages (`subjectId` scopes it).
 
 **Focus timer (Pomodoro).** `TimerProvider` (`app/components/timer/`) is mounted in the root layout,
 so it keeps running across the library and every document; `TimerButton`s in the reader toolbar

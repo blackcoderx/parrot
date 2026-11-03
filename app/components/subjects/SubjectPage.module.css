@@ -1,0 +1,187 @@
+/* A subject's page (SubjectPage). The page frame, header and flashcard deck reuse
+   components/flashcards/Study.module.css; file rows reuse the library's. */
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.addFile {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 500;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+
+.addFile:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.addFile:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.studied[data-stale] {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+/* Tabs: Flashcards / Notes & highlights / Files */
+.tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.tabList {
+  position: relative;
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.12s ease;
+}
+
+.tab:hover,
+.tab[data-selected] {
+  color: var(--foreground);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+.tabCount {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The accent underline that slides to the selected tab. */
+.tabIndicator {
+  position: absolute;
+  bottom: -1px;
+  left: var(--active-tab-left);
+  width: var(--active-tab-width);
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: left 0.2s ease, width 0.2s ease;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  outline: none;
+}
+
+/* Notes & highlights, grouped by file */
+.files {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.file {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fileTitle {
+  align-self: flex-start;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  transition: color 0.12s ease;
+}
+
+.fileTitle:hover {
+  color: var(--accent);
+}
+
+.notes {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.note {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 9px 8px;
+  border-radius: 6px;
+  color: var(--foreground);
+  transition: background 0.12s ease;
+}
+
+.note:hover {
+  background: var(--surface);
+}
+
+/* Line the marker up with the first line of text. */
+.note > :first-child {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.noteBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.noteText {
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.noteText :global(.katex) {
+  font-size: 1em;
+}
+
+/* The highlighted passage a note was made on. */
+.noteQuote {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.notePage {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}

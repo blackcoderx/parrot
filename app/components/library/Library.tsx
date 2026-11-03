@@ -9,25 +9,45 @@ import { getJson, sendJson } from "@/components/api";
 import { SettingsPopover } from "@/components/settings/SettingsPopover";
 import { TimerButton } from "@/components/timer/TimerButton";
 import { TrashIcon } from "@/components/TrashIcon";
-import type { DocumentRow } from "@/types";
+import type { DocumentRow, Subject, SubjectSummary } from "@/types";
+import { MoveMenu, PencilIcon, SubjectChooser, SubjectList, TitleInput } from "./Subjects";
+import { lastSubject, uploadPdf } from "./upload";
 import styles from "./Library.module.css";
 
-export type LibraryDoc = Pick<DocumentRow, "id" | "title" | "last_page" | "page_count">;
+export type LibraryDoc = Pick<DocumentRow, "id" | "title" | "last_page" | "page_count" | "subject_id">;
 
 /** Recent files listed on the home screen; every file is in the All files popover. */
 const RECENT_LIMIT = 5;
 
 /**
- * The home screen: open a new PDF, reopen/remove a recent one, or go study flashcards
- * (`dueCards` is how many are due for review).
+ * The home screen: your subjects (neglected ones first), open a new PDF, reopen/remove/move a
+ * recent one, or go study flashcards (`dueCards` is how many are due for review).
  */
-export function Library({ initialDocs, dueCards }: { initialDocs: LibraryDoc[]; dueCards: number }) {
+export function Library({
+  initialDocs,
+  initialSubjects,
+  dueCards,
+}: {
+  initialDocs: LibraryDoc[];
+  initialSubjects: SubjectSummary[];
+  dueCards: number;
+}) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [recent, setRecent] = useState<LibraryDoc[]>(initialDocs);
+  const [subjects, setSubjects] = useState<SubjectSummary[]>(initialSubjects);
   const [uploading, setUploading] = useState(false);
+  // A picked PDF waiting for its subject to be chosen.
+  const [pending, setPending] = useState<File | null>(null);
+  const [preselect, setPreselect] = useState<string | null>(null);
 
   const openPicker = useCallback(() => inputRef.current?.click(), []);
+
+  const reloadSubjects = useCallback(() => {
+    getJson<SubjectSummary[]>("/api/subjects")
+      .then(setSubjects)
+      .catch(() => {});
+  }, []);
 
   async function remove(id: string) {
     setRecent((prev) => prev.filter((d) => d.id !== id)); // optimistic
@@ -40,6 +60,7 @@ export function Library({ initialDocs, dueCards }: { initialDocs: LibraryDoc[]; 
         .then(setRecent)
         .catch(() => {});
     }
+    reloadSubjects();
   }
 
   async function rename(id: string, title: string) {
@@ -51,33 +72,54 @@ export function Library({ initialDocs, dueCards }: { initialDocs: LibraryDoc[]; 
     if (!res?.ok && previous !== undefined) setTitle(previous);
   }
 
+  async function move(id: string, subjectId: string | null) {
+    const previous = recent.find((d) => d.id === id)?.subject_id ?? null;
+    const setSubject = (s: string | null) =>
+      setRecent((prev) => prev.map((d) => (d.id === id ? { ...d, subject_id: s } : d)));
+    setSubject(subjectId); // optimistic
+    const res = await sendJson(`/api/documents/${id}`, "PATCH", { subject_id: subjectId }).catch(
+      () => null,
+    );
+    if (!res?.ok) setSubject(previous);
+    reloadSubjects();
+  }
+
+  const subjectName = (id: string | null) => subjects.find((s) => s.id === id)?.name ?? null;
+
   function renderRow(doc: LibraryDoc) {
     return (
       <LibraryRow
         key={doc.id}
         doc={doc}
+        subjectName={subjectName(doc.subject_id)}
+        subjects={subjects}
         onOpen={() => router.push(`/read/${doc.id}`)}
         onRename={(title) => rename(doc.id, title)}
+        onMove={(subjectId) => move(doc.id, subjectId)}
         onRemove={() => remove(doc.id)}
       />
     );
   }
 
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function upload(file: File, subjectId: string | null) {
+    setPending(null);
+    setUploading(true);
+    try {
+      router.push(`/read/${await uploadPdf(file, subjectId)}`);
+    } catch {
+      setUploading(false);
+    }
+  }
+
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // allow re-selecting the same file later
     if (!file) return;
-
-    setUploading(true);
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch("/api/documents", { method: "POST", body: form });
-      if (!res.ok) throw new Error("Upload failed");
-      const doc: LibraryDoc = await res.json();
-      router.push(`/read/${doc.id}`);
-    } catch {
-      setUploading(false);
+    if (subjects.length === 0) {
+      upload(file, null);
+    } else {
+      setPreselect(lastSubject());
+      setPending(file);
     }
   }
 
@@ -110,6 +152,15 @@ export function Library({ initialDocs, dueCards }: { initialDocs: LibraryDoc[]; 
           hidden
           onChange={onFile}
         />
+        <SubjectChooser
+          open={pending !== null}
+          subjects={subjects}
+          preselect={preselect}
+          onChoose={(subjectId) => pending && upload(pending, subjectId)}
+          onCancel={() => setPending(null)}
+        />
+
+        <SubjectList subjects={subjects} onChange={setSubjects} />
 
         <section className={styles.recent}>
           <div className={styles.recentHeader}>
@@ -180,54 +231,41 @@ function AllFiles({
 
 interface RowProps {
   doc: LibraryDoc;
+  /** The doc's subject, shown after its title; null when Unsorted. */
+  subjectName: string | null;
+  /** Subjects it can be moved to; the move action is hidden when there are none. */
+  subjects: Subject[];
   onOpen: () => void;
   onRename: (title: string) => void;
+  onMove: (subjectId: string | null) => void;
   onRemove: () => void;
 }
 
-/** One recent document: open it, rename it inline, or remove it (after confirming). */
-function LibraryRow({ doc, onOpen, onRename, onRemove }: RowProps) {
+/** One document: open it, rename it inline, move it to a subject, or remove it (after confirming). */
+export function LibraryRow({ doc, subjectName, subjects, onOpen, onRename, onMove, onRemove }: RowProps) {
   const [editing, setEditing] = useState(false);
-  // Enter/Escape end the edit and unmount the input, which may also fire blur — commit once.
-  const finished = useRef(false);
-
-  function startEditing() {
-    finished.current = false;
-    setEditing(true);
-  }
-
-  function finish(value: string | null) {
-    if (finished.current) return;
-    finished.current = true;
-    setEditing(false);
-    const title = value?.trim();
-    if (title && title !== doc.title) onRename(title);
-  }
 
   return (
     <li className={styles.rowWrap}>
       {editing ? (
-        <input
-          className={styles.rowInput}
+        <TitleInput
+          label="Document title"
           defaultValue={doc.title}
           maxLength={200}
-          aria-label="Document title"
-          autoFocus
-          onFocus={(e) => e.currentTarget.select()}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") finish(e.currentTarget.value);
-            else if (e.key === "Escape") finish(null);
+          onDone={(title) => {
+            setEditing(false);
+            if (title && title !== doc.title) onRename(title);
           }}
-          onBlur={(e) => finish(e.currentTarget.value)}
         />
       ) : (
         <button className={styles.row} onClick={onOpen}>
           <span className={styles.rowTitle}>{doc.title}</span>
+          {subjectName && <span className={styles.rowSubject}>{subjectName}</span>}
         </button>
       )}
 
       {/* One slot at the right edge: the reading progress, which flips over on hover (or
-          keyboard focus) like a card to reveal the rename / remove actions on its back. */}
+          keyboard focus) like a card to reveal the rename / move / remove actions on its back. */}
       {!editing && (
         <div className={styles.rowSide}>
           <div className={styles.flip}>
@@ -238,12 +276,21 @@ function LibraryRow({ doc, onOpen, onRename, onRemove }: RowProps) {
             <div className={`${styles.face} ${styles.back}`}>
               <button
                 className={`${styles.rowAction} ${styles.rowEdit}`}
-                onClick={startEditing}
+                onClick={() => setEditing(true)}
                 aria-label={`Rename ${doc.title}`}
                 title="Rename"
               >
                 <PencilIcon />
               </button>
+
+              {subjects.length > 0 && (
+                <MoveMenu
+                  title={doc.title}
+                  current={doc.subject_id}
+                  subjects={subjects}
+                  onMove={onMove}
+                />
+              )}
 
               <AlertDialog.Root>
                 <AlertDialog.Trigger
@@ -287,20 +334,6 @@ function ArrowIcon() {
         d="M7 17L17 7M9 7h8v8"
         stroke="currentColor"
         strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function PencilIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M4 20h4L19 9a2.83 2.83 0 0 0-4-4L4 16v4zM13.5 6.5l4 4"
-        stroke="currentColor"
-        strokeWidth="1.6"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

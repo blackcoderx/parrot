@@ -1,5 +1,12 @@
 import { NextRequest } from "next/server";
-import { getDocument, touchDocument, deleteDocument, renameDocument } from "@/lib/db";
+import {
+  getDocument,
+  getSubject,
+  touchDocument,
+  deleteDocument,
+  renameDocument,
+  setDocumentSubject,
+} from "@/lib/db";
 import { invalidJson, readJson } from "@/lib/http";
 import { deletePdf } from "@/lib/storage";
 
@@ -13,12 +20,28 @@ export async function GET(_req: NextRequest, ctx: RouteContext<"/api/documents/[
 
 const MAX_TITLE = 200;
 
-// PATCH /api/documents/[id] — rename ({ title }) or update reading progress
-// ({ last_page?, page_count? }). A rename doesn't count as opening the document.
+// PATCH /api/documents/[id] — rename ({ title }), file under a subject ({ subject_id }, null =
+// Unsorted) or update reading progress ({ last_page?, page_count? }). A rename or move doesn't
+// count as opening the document.
 export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/documents/[id]">) {
   const { id } = await ctx.params;
-  const body = await readJson<{ title: string; last_page: number; page_count: number }>(request);
+  const body = await readJson<{
+    title: string;
+    subject_id: string | null;
+    last_page: number;
+    page_count: number;
+  }>(request);
   if (!body) return invalidJson();
+
+  if (body.subject_id !== undefined) {
+    const subjectId = body.subject_id;
+    if (subjectId !== null && (typeof subjectId !== "string" || !getSubject(subjectId))) {
+      return Response.json({ error: "No such subject" }, { status: 400 });
+    }
+    const doc = setDocumentSubject(id, subjectId);
+    if (!doc) return Response.json({ error: "Not found" }, { status: 404 });
+    return Response.json(doc);
+  }
 
   if (body.title !== undefined) {
     const title = typeof body.title === "string" ? body.title.trim() : "";

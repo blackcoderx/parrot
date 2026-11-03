@@ -17,6 +17,25 @@ export interface DocumentRow {
   last_page: number;
   added_at: number;
   opened_at: number;
+  /** The subject it's filed under, or null for Unsorted. */
+  subject_id: string | null;
+}
+
+/** A school subject the reader files documents under. */
+export interface Subject {
+  id: string;
+  name: string;
+  created_at: number;
+}
+
+/** A subject on the home screen, with how much is waiting and when it was last studied. */
+export interface SubjectSummary extends Subject {
+  doc_count: number;
+  card_count: number;
+  /** Cards due for review now. */
+  due: number;
+  /** Last card reviewed or file read in this subject (epoch ms), or null if never. */
+  last_studied: number | null;
 }
 
 export interface Highlight {
@@ -31,6 +50,11 @@ export interface Highlight {
   created_at: number;
   /** Id of an attached saved chat thread, or null. Populated via LEFT JOIN. */
   chat_id: string | null;
+}
+
+/** A highlight, note or thread listed on a subject page, which names its document. */
+export interface SubjectAnnotation extends Highlight {
+  document_title: string;
 }
 
 /** Where in the document a flashcard was made, captured when it's created. */
@@ -78,6 +102,8 @@ export type Grade = 1 | 2 | 3 | 4;
 /** A card on the study page: from any document, with what each grade would schedule. */
 export interface StudyCard extends Flashcard {
   document_title: string;
+  /** The document's subject, or null for Unsorted. */
+  subject_id: string | null;
   /** Milliseconds until the card is due again after each grade, Again..Easy. */
   intervals: [number, number, number, number];
 }

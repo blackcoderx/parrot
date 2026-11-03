@@ -14,6 +14,9 @@ import type {
   NormRect,
   StudyCard,
   StudyToday,
+  Subject,
+  SubjectAnnotation,
+  SubjectSummary,
 } from "@/types";
 
 // Shape as stored in SQLite (rects is a JSON string column).
@@ -28,7 +31,7 @@ interface FlashcardDbRow extends Omit<Flashcard, "tags" | "status" | "reps" | "l
   srs: string | null;
 }
 
-type StudyCardDbRow = FlashcardDbRow & { document_title: string };
+type StudyCardDbRow = FlashcardDbRow & { document_title: string; subject_id: string | null };
 
 const globalForDb = globalThis as unknown as { parrotDb?: Database.Database };
 
@@ -134,6 +137,13 @@ function createDb(): Database.Database {
       document_id TEXT REFERENCES documents(id) ON DELETE SET NULL
     );
     CREATE INDEX IF NOT EXISTS idx_focus_sessions_day ON focus_sessions(day);
+
+    -- The reader's school subjects; each document sits under at most one.
+    CREATE TABLE IF NOT EXISTS subjects (
+      id         TEXT PRIMARY KEY,
+      name       TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      created_at INTEGER NOT NULL
+    );
   `);
 
   // Migrate databases created before a column existed (CREATE TABLE IF NOT EXISTS above is a
@@ -145,6 +155,9 @@ function createDb(): Database.Database {
     }
   }
   addColumn("highlights", "note", "TEXT");
+  // Deleting a subject leaves its documents Unsorted rather than deleting them.
+  addColumn("documents", "subject_id", "TEXT REFERENCES subjects(id) ON DELETE SET NULL");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_documents_subject ON documents(subject_id)");
   addColumn("flashcards", "page", "INTEGER");
   addColumn("flashcards", "y", "REAL");
   addColumn("flashcards", "section_id", "TEXT");
@@ -184,11 +197,13 @@ export function insertDocument(doc: {
   id: string;
   title: string;
   filename: string;
+  subject_id: string | null;
 }): DocumentRow {
   return db
     .prepare(
-      `INSERT INTO documents (id, title, filename, page_count, last_page, added_at, opened_at)
-       VALUES (@id, @title, @filename, NULL, 1, @now, @now)
+      `INSERT INTO documents (id, title, filename, page_count, last_page, added_at, opened_at,
+                              subject_id)
+       VALUES (@id, @title, @filename, NULL, 1, @now, @now, @subject_id)
        RETURNING *`,
     )
     .get({ ...doc, now: Date.now() }) as DocumentRow;
@@ -223,8 +238,95 @@ export function renameDocument(id: string, title: string): DocumentRow | undefin
     | undefined;
 }
 
+/** File a document under a subject (null = Unsorted). Like a rename, it doesn't reorder the library. */
+export function setDocumentSubject(id: string, subjectId: string | null): DocumentRow | undefined {
+  return db
+    .prepare("UPDATE documents SET subject_id = ? WHERE id = ? RETURNING *")
+    .get(subjectId, id) as DocumentRow | undefined;
+}
+
 export function deleteDocument(id: string): void {
   db.prepare("DELETE FROM documents WHERE id = ?").run(id);
+}
+
+// ---------------------------------------------------------------------------
+// Subject queries
+// ---------------------------------------------------------------------------
+
+/**
+ * Every subject with its file and card counts, cards due by `now`, and when it was last
+ * studied (a card reviewed or a file read), least recently studied first.
+ */
+export function listSubjects(now = Date.now()): SubjectSummary[] {
+  const rows = db
+    .prepare(
+      `SELECT s.*,
+              (SELECT COUNT(*) FROM documents d WHERE d.subject_id = s.id) AS doc_count,
+              (SELECT COUNT(*) FROM flashcards f JOIN documents d ON d.id = f.document_id
+                WHERE d.subject_id = s.id) AS card_count,
+              (SELECT COUNT(*) FROM flashcards f JOIN documents d ON d.id = f.document_id
+                WHERE d.subject_id = s.id AND f.due <= @now) AS due,
+              MAX(COALESCE((SELECT MAX(r.reviewed_at) FROM flashcard_reviews r
+                              JOIN flashcards f ON f.id = r.card_id
+                              JOIN documents d ON d.id = f.document_id
+                             WHERE d.subject_id = s.id), 0),
+                  COALESCE((SELECT MAX(d.opened_at) FROM documents d
+                             WHERE d.subject_id = s.id), 0)) AS last_studied
+         FROM subjects s`,
+    )
+    .all({ now }) as SubjectSummary[];
+  return rows
+    .map((r) => ({ ...r, last_studied: r.last_studied || null }))
+    .sort((a, b) => (a.last_studied ?? 0) - (b.last_studied ?? 0) || a.name.localeCompare(b.name));
+}
+
+export function getSubject(id: string): Subject | undefined {
+  return db.prepare("SELECT * FROM subjects WHERE id = ?").get(id) as Subject | undefined;
+}
+
+/** Whether another subject already has this name (names are unique, ignoring case). */
+export function subjectNameTaken(name: string, exceptId?: string): boolean {
+  return !!db
+    .prepare("SELECT 1 FROM subjects WHERE name = ? AND id IS NOT ?")
+    .get(name, exceptId ?? null);
+}
+
+export function createSubject(name: string): Subject {
+  return db
+    .prepare("INSERT INTO subjects (id, name, created_at) VALUES (?, ?, ?) RETURNING *")
+    .get(randomUUID(), name, Date.now()) as Subject;
+}
+
+export function renameSubject(id: string, name: string): Subject | undefined {
+  return db.prepare("UPDATE subjects SET name = ? WHERE id = ? RETURNING *").get(name, id) as
+    | Subject
+    | undefined;
+}
+
+/** Delete a subject; its documents become Unsorted (the FK is ON DELETE SET NULL). */
+export function deleteSubject(id: string): void {
+  db.prepare("DELETE FROM subjects WHERE id = ?").run(id);
+}
+
+export function listSubjectDocuments(subjectId: string): DocumentRow[] {
+  return db
+    .prepare("SELECT * FROM documents WHERE subject_id = ? ORDER BY opened_at DESC")
+    .all(subjectId) as DocumentRow[];
+}
+
+/** Every highlight, note and saved thread in the subject's documents, file by file. */
+export function listSubjectAnnotations(subjectId: string): SubjectAnnotation[] {
+  const rows = db
+    .prepare(
+      `SELECT h.*, c.id AS chat_id, d.title AS document_title
+         FROM highlights h
+         JOIN documents d ON d.id = h.document_id
+         LEFT JOIN chats c ON c.highlight_id = h.id
+        WHERE d.subject_id = ?
+        ORDER BY d.opened_at DESC, h.page ASC, h.created_at ASC`,
+    )
+    .all(subjectId) as (HighlightDbRow & { document_title: string })[];
+  return rows.map((row) => ({ ...parseHighlight(row), document_title: row.document_title }));
 }
 
 // ---------------------------------------------------------------------------
@@ -267,11 +369,16 @@ function parseSrs(raw: string | null): Srs | null {
 }
 
 function toStudyCard(row: StudyCardDbRow, now: number): StudyCard {
-  const { document_title, ...card } = row;
-  return { ...toFlashcard(card), document_title, intervals: intervals(parseSrs(row.srs), now) };
+  const { document_title, subject_id, ...card } = row;
+  return {
+    ...toFlashcard(card),
+    document_title,
+    subject_id,
+    intervals: intervals(parseSrs(row.srs), now),
+  };
 }
 
-const STUDY_CARD_SELECT = `SELECT f.*, d.title AS document_title
+const STUDY_CARD_SELECT = `SELECT f.*, d.title AS document_title, d.subject_id
                              FROM flashcards f JOIN documents d ON d.id = f.document_id`;
 
 /** Every card from every document, with what each grade would schedule as of `now`. */
