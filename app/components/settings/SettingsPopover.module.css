@@ -116,6 +116,12 @@
   outline: none;
   transform-origin: var(--transform-origin);
   transition: opacity 0.12s ease, transform 0.12s ease;
+  /* Scrollable, but hide the scrollbar like the app's other panels. */
+  scrollbar-width: none;
+}
+
+.selectPopup::-webkit-scrollbar {
+  display: none;
 }
 
 /* Enter/exit states — also let Base UI finish closing so the popup unmounts. */
@@ -143,6 +149,101 @@
 .selectItem[data-selected] {
   color: var(--accent);
   font-weight: 550;
+}
+
+/* Model field (Base UI Autocomplete): the input with a chevron button inside its right edge. */
+.combo {
+  position: relative;
+}
+
+.comboInput {
+  padding-right: 32px;
+  outline: none;
+  transition: border-color 0.12s ease;
+}
+
+.comboInput:hover,
+.comboInput:focus {
+  border-color: var(--accent);
+}
+
+.comboTrigger {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  transform: translateY(-50%);
+  transition: color 0.12s ease;
+}
+
+.comboTrigger:hover {
+  color: var(--accent);
+}
+
+/* Chevrons flip while their list is open. */
+.comboTrigger svg,
+.selectIcon svg {
+  transition: transform 0.2s ease;
+}
+
+.comboTrigger[data-popup-open] svg,
+.select[data-popup-open] .selectIcon svg {
+  transform: rotate(180deg);
+}
+
+/* A long model list scrolls within a few rows. At least as wide as the input, growing for
+   long ids up to a sensible cap. */
+.modelPopup {
+  width: max-content;
+  min-width: var(--anchor-width);
+  max-width: min(340px, var(--available-width));
+  max-height: min(264px, var(--available-height));
+}
+
+.modelList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.modelItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.modelItem[data-current] {
+  color: var(--accent);
+  font-weight: 550;
+}
+
+.modelName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.modelEmpty:not(:empty) {
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comboTrigger svg,
+  .selectIcon svg {
+    transition: none;
+  }
 }
 
 .keyStatus {

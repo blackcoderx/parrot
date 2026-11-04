@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Autocomplete } from "@base-ui-components/react/autocomplete";
 import { Popover } from "@base-ui-components/react/popover";
 import { Select } from "@base-ui-components/react/select";
 import { getJson, sendJson } from "@/components/api";
@@ -147,25 +148,14 @@ export function SettingsPopover() {
                   </p>
                 )}
 
-                <label className={styles.field}>
-                  <span className={styles.label}>Model</span>
-                  <input
-                    className={styles.control}
-                    list={`models-${prefs.activeProvider}`}
-                    value={prefs.models[prefs.activeProvider] ?? ""}
-                    placeholder={active?.defaultModel || "model id"}
-                    onChange={(e) =>
-                      update({
-                        models: { ...prefs.models, [prefs.activeProvider]: e.target.value },
-                      })
-                    }
-                  />
-                  <datalist id={`models-${prefs.activeProvider}`}>
-                    {models.map((m) => (
-                      <option key={m} value={m} />
-                    ))}
-                  </datalist>
-                </label>
+                <ModelField
+                  models={models}
+                  value={prefs.models[prefs.activeProvider] ?? ""}
+                  placeholder={active?.defaultModel || "model id"}
+                  onChange={(model) =>
+                    update({ models: { ...prefs.models, [prefs.activeProvider]: model } })
+                  }
+                />
 
                 {active?.editableBaseURL && (
                   <label className={styles.field}>
@@ -269,6 +259,108 @@ function ChevronIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+/**
+ * The model id: free text, with the provider's models suggested as you type (or all of them
+ * from the chevron). The one in use is checked; anything typed is kept as-is.
+ */
+function ModelField({
+  models,
+  value,
+  placeholder,
+  onChange,
+}: {
+  models: string[];
+  value: string;
+  placeholder: string;
+  onChange: (model: string) => void;
+}) {
+  // What you've typed since the list opened; null shows every model (e.g. when the field
+  // already holds a full id, opening the list shouldn't narrow it to that one).
+  const [query, setQuery] = useState<string | null>(null);
+  const shown = useMemo(() => {
+    const q = query?.trim().toLowerCase();
+    return q ? models.filter((m) => m.toLowerCase().includes(q)) : models;
+  }, [models, query]);
+
+  return (
+    <div className={styles.field}>
+      <span className={styles.label}>Model</span>
+      <Autocomplete.Root
+        items={models}
+        filteredItems={shown}
+        value={value}
+        onValueChange={(model, details) => {
+          onChange(model);
+          setQuery(details.reason === "input-change" ? model : null);
+        }}
+        // Opening by click or chevron shows everything; opening by typing keeps the query.
+        onOpenChange={(open, details) => {
+          if (open && details.reason !== "input-change") setQuery(null);
+        }}
+        openOnInputClick
+      >
+        <div className={styles.combo}>
+          <Autocomplete.Input
+            className={`${styles.control} ${styles.comboInput}`}
+            placeholder={placeholder}
+            aria-label="Model"
+          />
+          <Autocomplete.Trigger className={styles.comboTrigger} aria-label="Show models">
+            <ChevronIcon />
+          </Autocomplete.Trigger>
+        </div>
+        <Autocomplete.Portal>
+          <Autocomplete.Positioner
+            className={styles.selectPositioner}
+            side="bottom"
+            align="start"
+            sideOffset={6}
+          >
+            <Autocomplete.Popup className={`${styles.selectPopup} ${styles.modelPopup}`}>
+              <Autocomplete.Empty className={styles.modelEmpty}>
+                {models.length === 0
+                  ? "No model list for this provider. Type a model id."
+                  : "No matching models. The id you typed will be used."}
+              </Autocomplete.Empty>
+              <Autocomplete.List className={styles.modelList}>
+                {(model: string) => (
+                  <Autocomplete.Item
+                    key={model}
+                    value={model}
+                    className={`${styles.selectItem} ${styles.modelItem}`}
+                    data-current={model === value || undefined}
+                  >
+                    <span className={styles.modelName}>{model}</span>
+                    {model === value && <CheckIcon />}
+                  </Autocomplete.Item>
+                )}
+              </Autocomplete.List>
+            </Autocomplete.Popup>
+          </Autocomplete.Positioner>
+        </Autocomplete.Portal>
+      </Autocomplete.Root>
+    </div>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M5 12l5 5l10 -10" />
     </svg>
   );
 }
