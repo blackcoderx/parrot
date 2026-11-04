@@ -315,19 +315,142 @@
 
 .askInputRow {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
   padding: 10px 12px;
   border-top: 1px solid var(--border);
+}
+
+/* Rounded composer: a borderless input with icon buttons inside its right edge. */
+.composer {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 5px 5px 5px 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.composer:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .askInput {
   flex: 1;
   min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  padding: 6px 0;
+  border: none;
+  outline: none;
   font-size: 13px;
   font-family: inherit;
   color: var(--foreground);
-  background: var(--background);
+  background: transparent;
+}
+
+.askInput::placeholder {
+  color: var(--muted);
+}
+
+.composerSave,
+.composerSend {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease,
+    opacity 0.15s ease;
+}
+
+/* Save sits outside the composer, as a round button matching its height. */
+.composerSave {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.composerSave:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  color: var(--accent);
+}
+
+.composerSave[data-saved] {
+  color: var(--accent);
+}
+
+.composerSave[data-saved] svg {
+  animation: composerPop 0.3s ease;
+}
+
+.composerSend {
+  background: var(--accent);
+  color: var(--porcelain);
+}
+
+.composerSend:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.composerSend:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.composerSave:disabled,
+.composerSend:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+/* While a reply streams the arrow gently pulses instead of looking merely disabled. */
+.composerSend[data-busy] {
+  opacity: 0.7;
+}
+
+.composerSend[data-busy] svg {
+  animation: composerPulse 1s ease-in-out infinite;
+}
+
+@keyframes composerPop {
+  50% {
+    transform: scale(1.25);
+  }
+}
+
+@keyframes composerPulse {
+  50% {
+    transform: translateY(-2px);
+    opacity: 0.6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .composer,
+  .composerSave,
+  .composerSend {
+    transition: none;
+  }
+
+  .composerSend:hover:not(:disabled),
+  .composerSend:active:not(:disabled) {
+    transform: none;
+  }
+
+  .composerSave[data-saved] svg,
+  .composerSend[data-busy] svg {
+    animation: none;
+  }
 }

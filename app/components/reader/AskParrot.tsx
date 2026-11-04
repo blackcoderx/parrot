@@ -302,30 +302,83 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
         </div>
       ) : (
         <div className={styles.askInputRow}>
-          <input
-            className={styles.askInput}
-            value={input}
-            placeholder="Type a message…"
-            autoFocus
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              // Plain Enter sends; Ctrl/Cmd+Enter bubbles to the window save handler.
-              if (e.key === "Enter" && !e.metaKey && !e.ctrlKey) submit();
-            }}
-          />
-          <button className={buttons.askSend} onClick={submit} disabled={busy}>
-            {busy ? "…" : "Send"}
-          </button>
+          <div className={styles.composer}>
+            <input
+              className={styles.askInput}
+              value={input}
+              placeholder="Type a message…"
+              aria-label="Message"
+              autoFocus
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                // Plain Enter sends; Ctrl/Cmd+Enter bubbles to the window save handler.
+                if (e.key === "Enter" && !e.metaKey && !e.ctrlKey) submit();
+              }}
+            />
+            <button
+              className={styles.composerSend}
+              onClick={submit}
+              disabled={busy || !input.trim()}
+              data-busy={busy || undefined}
+              aria-label="Send"
+              title="Send (Enter)"
+            >
+              <ArrowUpIcon />
+            </button>
+          </div>
           <button
-            className={buttons.askSave}
+            className={styles.composerSave}
             onClick={save}
             disabled={!canSave}
-            title="Save (Ctrl+Enter)"
+            data-saved={saved || undefined}
+            aria-label={saved ? "Saved" : "Save thread"}
+            title={saved ? "Saved" : "Save thread (Ctrl+Enter)"}
           >
-            {saved ? "Saved" : "Save"}
+            <BookmarkIcon filled={saved} />
           </button>
         </div>
       )}
     </div>
+  );
+}
+
+// Tabler outline "arrow-up" and "bookmark" (MIT).
+
+function ArrowUpIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M12 5l0 14" />
+      <path d="M18 11l-6 -6" />
+      <path d="M6 11l6 -6" />
+    </svg>
+  );
+}
+
+/** Outline until the thread is saved, then filled. */
+function BookmarkIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M18 7v14l-6 -4l-6 4v-14a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4z" />
+    </svg>
   );
 }
