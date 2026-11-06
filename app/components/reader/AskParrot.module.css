@@ -62,6 +62,26 @@
   color: #d93025;
 }
 
+/* Save thread: accent rather than danger, faded until there is something to save. */
+.askSaveBtn:hover:not(:disabled),
+.askSaveBtn[data-saved] {
+  color: var(--accent);
+}
+
+.askSaveBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.askSaveBtn:disabled:hover {
+  background: transparent;
+  color: var(--muted);
+}
+
+.askSaveBtn[data-saved] svg {
+  animation: composerPop 0.3s ease;
+}
+
 /* Inline "Delete this thread?" confirmation, shown in place of the input row. */
 .askConfirm {
   flex: 1;
@@ -318,7 +338,6 @@
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  border-top: 1px solid var(--border);
 }
 
 /* Rounded composer: a borderless input with icon buttons inside its right edge. */
@@ -358,7 +377,6 @@
   color: var(--muted);
 }
 
-.composerSave,
 .composerSend {
   flex: none;
   display: flex;
@@ -368,37 +386,10 @@
   height: 32px;
   border: none;
   border-radius: 999px;
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease,
-    opacity 0.15s ease;
-}
-
-/* Save sits outside the composer, as a round button matching its height. */
-.composerSave {
-  width: 44px;
-  height: 44px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--muted);
-}
-
-.composerSave:hover:not(:disabled) {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
-  color: var(--accent);
-}
-
-.composerSave[data-saved] {
-  color: var(--accent);
-}
-
-.composerSave[data-saved] svg {
-  animation: composerPop 0.3s ease;
-}
-
-.composerSend {
   background: var(--accent);
   color: var(--porcelain);
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
 .composerSend:hover:not(:disabled) {
@@ -409,7 +400,6 @@
   transform: scale(0.92);
 }
 
-.composerSave:disabled,
 .composerSend:disabled {
   cursor: default;
   opacity: 0.35;
@@ -439,7 +429,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .composer,
-  .composerSave,
   .composerSend {
     transition: none;
   }
@@ -449,7 +438,7 @@
     transform: none;
   }
 
-  .composerSave[data-saved] svg,
+  .askSaveBtn[data-saved] svg,
   .composerSend[data-busy] svg {
     animation: none;
   }

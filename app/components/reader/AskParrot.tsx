@@ -234,6 +234,16 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
       <div className={styles.askHeader} {...headerProps}>
         <span className={styles.askTitle}>Ask Parrot</span>
         <span className={styles.askHeaderActions}>
+          <button
+            className={`${styles.askIconBtn} ${styles.askSaveBtn}`}
+            onClick={save}
+            disabled={!canSave}
+            data-saved={saved || undefined}
+            aria-label={saved ? "Saved" : "Save thread"}
+            title={saved ? "Saved" : "Save thread (Ctrl+Enter)"}
+          >
+            <BookmarkIcon filled={saved} />
+          </button>
           {anchoredId && (
             <button
               className={styles.askIconBtn}
@@ -326,16 +336,6 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
               <ArrowUpIcon />
             </button>
           </div>
-          <button
-            className={styles.composerSave}
-            onClick={save}
-            disabled={!canSave}
-            data-saved={saved || undefined}
-            aria-label={saved ? "Saved" : "Save thread"}
-            title={saved ? "Saved" : "Save thread (Ctrl+Enter)"}
-          >
-            <BookmarkIcon filled={saved} />
-          </button>
         </div>
       )}
     </div>
@@ -368,8 +368,8 @@ function ArrowUpIcon() {
 function BookmarkIcon({ filled }: { filled: boolean }) {
   return (
     <svg
-      width="18"
-      height="18"
+      width="16"
+      height="16"
       viewBox="0 0 24 24"
       fill={filled ? "currentColor" : "none"}
       stroke="currentColor"
