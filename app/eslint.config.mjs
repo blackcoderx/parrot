@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Packaging output (scripts/package-windows.ps1).
+    ".next-package/**",
+    "dist/**",
     // Vendored pdf.js worker (minified build artifact copied from pdfjs-dist).
     "public/pdf.worker.min.mjs",
   ]),

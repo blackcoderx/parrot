@@ -20,7 +20,13 @@ bun install
 bun run dev      # Next dev server → http://localhost:3000
 bun run build    # production build (also runs the TypeScript typecheck)
 bun run lint     # eslint (config: app/eslint.config.mjs)
+bun run package:win  # dist/parrot-windows.zip — standalone server + portable node.exe + launcher
 ```
+
+- `package:win` (`scripts/package-windows.ps1`) builds into `.next-package/` (via `NEXT_DIST_DIR`),
+  so it's safe while `next dev` runs. It ships the local `node.exe`, strips `.env*`, and adds
+  `scripts/package/` (`Start Parrot.bat`, `launcher.mjs` on port 3737 / loopback, `README.txt`).
+  The recipient's data goes to their own `%USERPROFILE%\.parrot`; AI uses their `config.json` key.
 
 - There is **no test suite** configured. Use `bun run build` for typechecking and `bun run lint`
   for lint; verify behavior by driving the running app in a browser.

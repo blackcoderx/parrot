@@ -202,7 +202,7 @@ export function getModel(prefs: AiPrefs): LanguageModel {
 
   const apiKey = resolveKey(id);
   if (desc.needsKey && !apiKey) {
-    throw new Error(`No API key found for ${desc.label}. Set ${desc.envKey} in app/.env.local.`);
+    throw new Error(`No API key found for ${desc.label}. Set ${desc.envKey} in app/.env.local or add it to ~/.parrot/config.json.`);
   }
   const baseURL = resolveBaseURL(id, prefs);
   if (!baseURL) throw new Error(`No base URL configured for ${desc.label}.`);
