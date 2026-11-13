@@ -21,6 +21,22 @@
   --font-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
 }
 
+/* App theme for the library, subject and flashcard screens — set on <html> by
+   components/theme.ts. The reader opts out: it always sets data-reading for its own
+   Light / Sepia / Dark modes. */
+:root[data-theme="dark"]:not([data-reading]) {
+  color-scheme: dark;
+
+  --background: #1c1c1e;
+  --foreground: #e8e6e3;
+  --accent: #7c5cf0;
+  --muted: #9a9a9a;
+  /* A touch lighter than the reader's, so tile and button outlines still read. */
+  --border: #38383b;
+  /* Lighter than the background: on these screens it's a hover / menu fill. */
+  --surface: #26262a;
+}
+
 /* Reading modes — set on <html> by the reader (components/reader/readingMode.ts) so
    portalled popovers pick them up too. */
 :root[data-reading="sepia"] {

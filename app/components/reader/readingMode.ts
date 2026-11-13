@@ -18,8 +18,9 @@ function isMode(v: unknown): v is ReadingMode {
 
 /**
  * The reader's display mode, remembered per browser. It's applied as `data-reading` on
- * <html> (so portalled popovers inherit the theme tokens in globals.css) and removed when
- * the reader unmounts, leaving the library light.
+ * <html> (so portalled popovers inherit the theme tokens in globals.css) — "light" included,
+ * since any data-reading switches off the app's light/dark theme (components/theme.ts) — and
+ * removed when the reader unmounts, handing the page back to that theme.
  */
 export function useReadingMode(): [ReadingMode, (mode: ReadingMode) => void] {
   const [mode, setModeState] = useState<ReadingMode>("light");
@@ -35,7 +36,7 @@ export function useReadingMode(): [ReadingMode, (mode: ReadingMode) => void] {
 
   useLayoutEffect(() => {
     const root = document.documentElement;
-    if (mode !== "light") root.dataset.reading = mode;
+    root.dataset.reading = mode;
     return () => {
       delete root.dataset.reading;
     };

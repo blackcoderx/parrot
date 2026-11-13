@@ -19,6 +19,7 @@ import {
   SubjectGrid,
   TitleInput,
 } from "./Subjects";
+import { ThemeButton } from "./ThemeButton";
 import { lastSubject, uploadPdf } from "./upload";
 import styles from "./Library.module.css";
 
@@ -188,6 +189,7 @@ export function Library({
 
       <div className={styles.settings}>
         <SettingsPopover />
+        <ThemeButton className={styles.timerBtn} />
         <TimerButton className={styles.timerBtn} clockClassName={styles.timerClock} />
       </div>
     </div>

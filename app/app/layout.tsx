@@ -6,6 +6,7 @@ import { GeistMono } from "geist/font/mono";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 import { TimerProvider } from "@/components/timer/TimerProvider";
+import { themeScript } from "@/components/theme";
 
 export const metadata: Metadata = {
   title: "Parrot",
@@ -14,7 +15,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+    // suppressHydrationWarning: the theme script sets data-theme before React hydrates.
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body>
         <TimerProvider>{children}</TimerProvider>
       </body>

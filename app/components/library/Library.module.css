@@ -852,7 +852,8 @@
   gap: 8px;
 }
 
-/* Focus timer pill (matches the settings trigger; widens to show the time left) */
+/* Focus timer pill (matches the settings trigger; widens to show the time left). The
+   light/dark theme toggle uses it too. */
 .timerBtn {
   display: flex;
   align-items: center;
