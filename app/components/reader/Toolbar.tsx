@@ -28,6 +28,7 @@ interface Props {
   onToggleAi: () => void;
   noteMode: boolean;
   onToggleNote: () => void;
+  onNewNote: () => void;
 }
 
 export function Toolbar({
@@ -51,6 +52,7 @@ export function Toolbar({
   onToggleAi,
   noteMode,
   onToggleNote,
+  onNewNote,
 }: Props) {
   const [draft, setDraft] = useState(String(currentPage));
   const inputRef = useRef<HTMLInputElement>(null);
@@ -184,6 +186,15 @@ export function Toolbar({
       >
         <NotePenIcon />
       </button>
+      <button
+        className={`${styles.toolBtn} ${styles.penBtn}`}
+        onClick={onNewNote}
+        aria-label="New note"
+        title="New note on this page (N)"
+        aria-keyshortcuts="N"
+      >
+        <NewNoteIcon />
+      </button>
 
       <span className={styles.divider} aria-hidden />
 
@@ -292,6 +303,27 @@ function NotePenIcon() {
     >
       <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
       <path d="M13.5 6.5l4 4" />
+    </svg>
+  );
+}
+
+/** A note sheet with a plus, for a page note (no selection needed). */
+function NewNoteIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M13 20.5H6A1.5 1.5 0 0 1 4.5 19V5A1.5 1.5 0 0 1 6 3.5h12A1.5 1.5 0 0 1 19.5 5v8" />
+      <path d="M8 8h8M8 11.5h5" />
+      <path d="M18 16v6M15 19h6" />
     </svg>
   );
 }

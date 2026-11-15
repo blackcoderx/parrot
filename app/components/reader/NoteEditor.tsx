@@ -14,7 +14,18 @@ import styles from "./NoteEditor.module.css";
 export type NoteAnchor =
   | { kind: "selection"; page: number; rects: NormRect[]; text: string }
   | { kind: "region"; page: number; rect: NormRect }
+  /** A page note: nothing selected, pinned to the page as a whole. */
+  | { kind: "page"; page: number }
   | { kind: "existing"; highlight: Highlight };
+
+/** The page a note belongs to as a whole, or null if it's anchored to a spot on the page. */
+function pageOf(anchor: NoteAnchor): number | null {
+  if (anchor.kind === "page") return anchor.page;
+  if (anchor.kind === "existing" && anchor.highlight.rects.length === 0) {
+    return anchor.highlight.page;
+  }
+  return null;
+}
 
 interface Props {
   documentId: string;
@@ -50,7 +61,12 @@ export function NoteEditor({ documentId, anchorRect, anchor, onClose, onSaved }:
         : await sendJson("/api/highlights", "POST", {
             documentId,
             page: anchor.page,
-            rects: anchor.kind === "selection" ? anchor.rects : [anchor.rect],
+            rects:
+              anchor.kind === "selection"
+                ? anchor.rects
+                : anchor.kind === "region"
+                  ? [anchor.rect]
+                  : [],
             color: NOTE_COLOR,
             text: anchor.kind === "selection" ? anchor.text : "",
             note,
@@ -77,13 +93,16 @@ export function NoteEditor({ documentId, anchorRect, anchor, onClose, onSaved }:
   }
 
   const editing = mode !== "view";
+  const notePage = pageOf(anchor);
 
   return (
     <div ref={panelRef} popover="manual" className={styles.notePanel} style={style}>
       <div className={styles.noteHeader} {...headerProps}>
         <span className={styles.noteTitleRow}>
           <NoteIcon size={15} />
-          <span className={styles.noteTitle}>Note</span>
+          <span className={styles.noteTitle}>
+            {notePage === null ? "Note" : `Note · Page ${notePage}`}
+          </span>
         </span>
         <span className={styles.noteHeaderActions}>
           {editing && (

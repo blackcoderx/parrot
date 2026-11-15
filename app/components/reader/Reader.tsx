@@ -37,7 +37,8 @@ interface AskState {
 
 interface NoteState {
   anchor: NoteAnchor;
-  anchorRect: DOMRect;
+  /** Null opens the window centered (a page note has nothing on screen to sit next to). */
+  anchorRect: DOMRect | null;
 }
 
 const MIN_SCALE = 0.5;
@@ -118,6 +119,14 @@ export function Reader({ documentId, title, initialPage }: Props) {
     setFlashOpen(true);
   }, [flashOpen, flashView, sourceFor]);
 
+  // A note on the page being read, with nothing to select first. The pens go off so a stray
+  // drag doesn't start a second note.
+  const newPageNote = useCallback(() => {
+    setAiMode(false);
+    setNoteMode(false);
+    setNote({ anchor: { kind: "page", page: pageRef.current }, anchorRect: null });
+  }, []);
+
   // Find in document. The text is extracted once (on first open) and reused afterwards.
   const openFind = useCallback(() => {
     setFindOpen(true);
@@ -138,6 +147,7 @@ export function Reader({ documentId, title, initialPage }: Props) {
   //   Ctrl/⌘+F  find in document (the browser's find can't see unrendered pages)
   //   F         flashcards
   //   Shift+F   new flashcard
+  //   N         new note on the current page
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       // The target isn't always an Element (e.g. a key event dispatched on `document`).
@@ -156,11 +166,14 @@ export function Reader({ documentId, title, initialPage }: Props) {
         e.preventDefault();
         if (e.shiftKey) newFlashcard();
         else toggleFlashcards();
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && !e.repeat && key === "n") {
+        e.preventDefault();
+        newPageNote();
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [toggleOutline, toggleFlashcards, newFlashcard, openFind]);
+  }, [toggleOutline, toggleFlashcards, newFlashcard, openFind, newPageNote]);
 
   // The outline is cached server-side after the first open; start fetching it right away
   // so the sidebar can fill before the PDF has even finished loading.
@@ -467,6 +480,7 @@ export function Reader({ documentId, title, initialPage }: Props) {
         onToggleAi={toggleAi}
         noteMode={noteMode}
         onToggleNote={toggleNote}
+        onNewNote={newPageNote}
       />
     </div>
   );

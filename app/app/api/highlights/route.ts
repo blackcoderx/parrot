@@ -13,7 +13,8 @@ export async function GET(request: NextRequest) {
   return Response.json(listHighlights(documentId));
 }
 
-// POST /api/highlights — create a highlight from normalized rects.
+// POST /api/highlights — create a highlight from normalized rects. A note may have no rects:
+// that's a page note, pinned to the page rather than to a spot on it.
 export async function POST(request: NextRequest) {
   const body = await readJson<{
     documentId: string;
@@ -25,7 +26,14 @@ export async function POST(request: NextRequest) {
   }>(request);
   if (!body) return invalidJson();
 
-  if (!body.documentId || typeof body.page !== "number" || !body.rects?.length || !body.color) {
+  const isNote = typeof body.note === "string" && body.note.trim() !== "";
+  if (
+    !body.documentId ||
+    typeof body.page !== "number" ||
+    !Array.isArray(body.rects) ||
+    (body.rects.length === 0 && !isNote) ||
+    !body.color
+  ) {
     return Response.json({ error: "Invalid highlight" }, { status: 400 });
   }
 

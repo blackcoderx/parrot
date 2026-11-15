@@ -24,8 +24,23 @@ export const HighlightLayer = memo(function HighlightLayer({
   onOpen,
   onOpenNote,
 }: Props) {
+  // Page notes have no rects: they show as pins stacked down the page's top-right corner.
+  const pageNotes = highlights.filter((h) => h.note !== null && h.rects.length === 0);
   return (
     <div className={styles.highlightLayer}>
+      {pageNotes.map((h, i) => (
+        <button
+          key={h.id}
+          type="button"
+          className={styles.pageNotePin}
+          style={{ top: 10 + i * 30 }}
+          title="Open page note"
+          aria-label="Open page note"
+          onClick={(e) => onOpenNote(h, e.currentTarget.getBoundingClientRect())}
+        >
+          <NoteIcon size={14} />
+        </button>
+      ))}
       {highlights.map((h) => {
         const hasNote = h.note !== null;
         const hasChat = !hasNote && h.chat_id !== null;
