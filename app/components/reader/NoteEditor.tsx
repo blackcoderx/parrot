@@ -122,6 +122,8 @@ export function NoteEditor({ documentId, anchorRect, anchor, onClose, onSaved }:
           className={styles.noteTextarea}
           value={text}
           placeholder="Write your note… Markdown and LaTeX: $x^2$ inline, $$…$$ on its own line"
+          // data-autofocus: focused when the window opens; autoFocus: when switching to Write later.
+          data-autofocus
           autoFocus
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {

@@ -318,6 +318,8 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
               value={input}
               placeholder="Type a message…"
               aria-label="Message"
+              // data-autofocus: focused when the window opens; autoFocus: when it remounts after a cancelled delete.
+              data-autofocus
               autoFocus
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {

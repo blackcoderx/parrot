@@ -24,7 +24,8 @@ function clampPos(left: number, top: number, w: number, h: number): Pos {
  * A draggable top-layer window (Popover API, `popover="manual"`), shared by Ask Parrot, the
  * note editor and the focus timer. Opens at `options.initialPos`, else near `anchorRect`, else
  * centered; stays clamped to the viewport, closes on Escape (unless `closeOnEscape` is false),
- * and drags by whatever element receives `headerProps`, reporting drops to `onMoved`.
+ * and drags by whatever element receives `headerProps`, reporting drops to `onMoved`. On open
+ * it focuses the element inside marked `data-autofocus`, if any.
  */
 export function useFloatingWindow(
   anchorRect: DOMRect | null,
@@ -60,6 +61,14 @@ export function useFloatingWindow(
     // Initial placement only — the anchor and initial position aren't live.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Once placed (and so visible), focus the element marked `data-autofocus`. React's own
+  // `autoFocus` fires at mount, while the window is still hidden, so the browser ignores it.
+  const placed = pos !== null;
+  useEffect(() => {
+    if (!placed) return;
+    panelRef.current?.querySelector<HTMLElement>("[data-autofocus]")?.focus({ preventScroll: true });
+  }, [placed]);
 
   // Escape closes; re-clamp when the viewable area changes. Observing <html> covers window
   // resizes and also a page scrollbar appearing later (e.g. once a PDF loads), which fires no
