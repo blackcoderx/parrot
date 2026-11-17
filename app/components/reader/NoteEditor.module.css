@@ -1,12 +1,13 @@
-/* Note editor window (mirrors the Ask Parrot window shell) */
+/* Note editor window: opens centered at the flashcards window's size, then moves by its header
+   and resizes from the corner. */
 .notePanel {
   position: fixed;
   inset: auto;
   margin: 0;
   display: flex;
   flex-direction: column;
-  width: 300px;
-  height: 240px;
+  width: min(700px, 94vw);
+  height: min(440px, 70vh);
   min-width: 240px;
   min-height: 160px;
   max-width: 96vw;
@@ -19,6 +20,23 @@
   overflow: hidden;
   resize: both;
   will-change: left, top;
+  /* Grows in from slightly smaller, with the flashcards window's ease-out. */
+  transition:
+    opacity 0.2s ease-out,
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@starting-style {
+  .notePanel:popover-open {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notePanel {
+    transition: none;
+  }
 }
 
 .noteHeader {

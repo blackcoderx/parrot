@@ -35,10 +35,9 @@ interface AskState {
   anchorRect: DOMRect;
 }
 
+/** The note window always opens large and centered, so it needs no screen position. */
 interface NoteState {
   anchor: NoteAnchor;
-  /** Null opens the window centered (a page note has nothing on screen to sit next to). */
-  anchorRect: DOMRect | null;
 }
 
 const MIN_SCALE = 0.5;
@@ -124,7 +123,7 @@ export function Reader({ documentId, title, initialPage }: Props) {
   const newPageNote = useCallback(() => {
     setAiMode(false);
     setNoteMode(false);
-    setNote({ anchor: { kind: "page", page: pageRef.current }, anchorRect: null });
+    setNote({ anchor: { kind: "page", page: pageRef.current } });
   }, []);
 
   // Find in document. The text is extracted once (on first open) and reused afterwards.
@@ -288,7 +287,6 @@ export function Reader({ documentId, title, initialPage }: Props) {
         rects: selection.rects,
         text: selection.text,
       },
-      anchorRect: selection.anchorRect,
     });
     clearSelection();
   }
@@ -305,14 +303,14 @@ export function Reader({ documentId, title, initialPage }: Props) {
   }
 
   // Add a note from a note-pen region.
-  const handleNoteRegion = useCallback((page: number, rect: NormRect, anchorRect: DOMRect) => {
+  const handleNoteRegion = useCallback((page: number, rect: NormRect) => {
     setNoteMode(false);
-    setNote({ anchor: { kind: "region", page, rect }, anchorRect });
+    setNote({ anchor: { kind: "region", page, rect } });
   }, []);
 
   // Open an existing note from its highlight.
-  const handleOpenNote = useCallback((h: Highlight, anchorRect: DOMRect) => {
-    setNote({ anchor: { kind: "existing", highlight: h }, anchorRect });
+  const handleOpenNote = useCallback((h: Highlight) => {
+    setNote({ anchor: { kind: "existing", highlight: h } });
   }, []);
 
   const handleDeleteHighlight = useCallback(async (id: string) => {
@@ -430,7 +428,6 @@ export function Reader({ documentId, title, initialPage }: Props) {
       {note && (
         <NoteEditor
           documentId={documentId}
-          anchorRect={note.anchorRect}
           anchor={note.anchor}
           onClose={() => setNote(null)}
           onSaved={loadHighlights}

@@ -29,8 +29,6 @@ function pageOf(anchor: NoteAnchor): number | null {
 
 interface Props {
   documentId: string;
-  /** Rect used only for the window's initial placement (not a live anchor). */
-  anchorRect: DOMRect | null;
   anchor: NoteAnchor;
   onClose: () => void;
   onSaved: () => void;
@@ -42,13 +40,15 @@ interface Props {
  */
 type Mode = "view" | "write" | "preview";
 
-export function NoteEditor({ documentId, anchorRect, anchor, onClose, onSaved }: Props) {
+export function NoteEditor({ documentId, anchor, onClose, onSaved }: Props) {
   const saved = anchor.kind === "existing" ? (anchor.highlight.note ?? "") : "";
   const isExisting = anchor.kind === "existing";
   const [text, setText] = useState(saved);
   const [mode, setMode] = useState<Mode>(isExisting && saved.trim() ? "view" : "write");
   const [saving, setSaving] = useState(false);
-  const { panelRef, style, headerProps } = useFloatingWindow(anchorRect, onClose);
+  // Opens large and centered like the flashcards window (no anchor); drag the header to move
+  // it, and the bottom-right corner to resize it.
+  const { panelRef, style, headerProps } = useFloatingWindow(null, onClose);
 
   async function save() {
     const note = text.trim();
