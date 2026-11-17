@@ -6,6 +6,7 @@ import { DB_PATH, ensureDirs } from "./paths";
 import { intervals, statusOf, type Srs } from "./srs";
 import type {
   CardSource,
+  Deadline,
   DocumentRow,
   Flashcard,
   Grade,
@@ -142,6 +143,15 @@ function createDb(): Database.Database {
     CREATE TABLE IF NOT EXISTS subjects (
       id         TEXT PRIMARY KEY,
       name       TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      created_at INTEGER NOT NULL
+    );
+
+    -- Dates the reader is counting down to (home screen wall calendar). due is their local
+    -- calendar day (YYYY-MM-DD), so the count turns over at their midnight, not UTC's.
+    CREATE TABLE IF NOT EXISTS deadlines (
+      id         TEXT PRIMARY KEY,
+      title      TEXT NOT NULL,
+      due        TEXT NOT NULL,
       created_at INTEGER NOT NULL
     );
   `);
@@ -687,4 +697,29 @@ export function focusDayCounts(): Map<string, number> {
     .prepare("SELECT day, COUNT(*) AS n FROM focus_sessions GROUP BY day")
     .all() as { day: string; n: number }[];
   return new Map(rows.map((r) => [r.day, r.n]));
+}
+
+// ---------------------------------------------------------------------------
+// Deadline queries
+// ---------------------------------------------------------------------------
+
+/** Every deadline, soonest first (YYYY-MM-DD sorts as text). */
+export function listDeadlines(): Deadline[] {
+  return db.prepare("SELECT * FROM deadlines ORDER BY due, created_at").all() as Deadline[];
+}
+
+export function createDeadline(title: string, due: string): Deadline {
+  return db
+    .prepare("INSERT INTO deadlines (id, title, due, created_at) VALUES (?, ?, ?, ?) RETURNING *")
+    .get(randomUUID(), title, due, Date.now()) as Deadline;
+}
+
+export function updateDeadline(id: string, title: string, due: string): Deadline | undefined {
+  return db
+    .prepare("UPDATE deadlines SET title = ?, due = ? WHERE id = ? RETURNING *")
+    .get(title, due, id) as Deadline | undefined;
+}
+
+export function deleteDeadline(id: string): void {
+  db.prepare("DELETE FROM deadlines WHERE id = ?").run(id);
 }

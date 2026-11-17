@@ -9,7 +9,7 @@ import { getJson, sendJson } from "@/components/api";
 import { SettingsPopover } from "@/components/settings/SettingsPopover";
 import { TimerButton } from "@/components/timer/TimerButton";
 import { TrashIcon } from "@/components/TrashIcon";
-import type { DocumentRow, Subject, SubjectSummary } from "@/types";
+import type { Deadline, DocumentRow, Subject, SubjectSummary } from "@/types";
 import { useNow } from "@/components/timer/TimerProvider";
 import {
   MoveMenu,
@@ -20,23 +20,26 @@ import {
   TitleInput,
 } from "./Subjects";
 import { ThemeButton } from "./ThemeButton";
+import { WallCalendar } from "./WallCalendar";
 import { lastSubject, uploadPdf } from "./upload";
 import styles from "./Library.module.css";
 
 export type LibraryDoc = Pick<DocumentRow, "id" | "title" | "last_page" | "page_count" | "subject_id">;
 
 /**
- * The home screen: the subject to study next, every subject (neglected ones first), the file
- * you were last reading (every file is in the All files dialog), a new PDF, and the flashcards
- * page (`dueCards` is how many are due for review).
+ * The home screen: a wall calendar counting down to the next deadline, the subject to study
+ * next, every subject (neglected ones first), the file you were last reading (every file is in
+ * the All files dialog), a new PDF, and the flashcards page (`dueCards` is how many are due).
  */
 export function Library({
   initialDocs,
   initialSubjects,
+  initialDeadlines,
   dueCards,
 }: {
   initialDocs: LibraryDoc[];
   initialSubjects: SubjectSummary[];
+  initialDeadlines: Deadline[];
   dueCards: number;
 }) {
   const router = useRouter();
@@ -171,6 +174,8 @@ export function Library({
           onChoose={(subjectId) => pending && upload(pending, subjectId)}
           onCancel={() => setPending(null)}
         />
+
+        <WallCalendar initialDeadlines={initialDeadlines} now={now} />
 
         <StudyNext subjects={subjects} now={now} />
 

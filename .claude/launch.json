@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "parrot-dev",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["--cwd=app", "run", "dev"],
+      "port": 3000
+    }
+  ]
+}

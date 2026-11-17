@@ -142,3 +142,12 @@ export interface FocusStats {
   streak: number;
   today: number;
 }
+
+/** A date the reader is counting down to, shown on the home screen's wall calendar. */
+export interface Deadline {
+  id: string;
+  title: string;
+  /** The reader's local calendar day, YYYY-MM-DD (no time or timezone). */
+  due: string;
+  created_at: number;
+}

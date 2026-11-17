@@ -1,0 +1,401 @@
+/* A tear-off wall calendar hanging from a nail. On wide screens it hangs in the page's
+   top-right corner, clear of the centred column; narrower, it sits in the column's flow. */
+.wall {
+  --sheet: var(--background);
+  position: absolute;
+  top: 20px;
+  right: 40px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 150px;
+  /* Swings about the nail. */
+  transform-origin: 50% 6px;
+}
+
+@media (max-width: 1159px) {
+  .wall {
+    position: static;
+    align-self: center;
+    margin-bottom: 4px;
+  }
+}
+
+.wall:hover {
+  animation: swing 1.8s ease-in-out;
+}
+
+@keyframes swing {
+  0% { rotate: 0deg; }
+  18% { rotate: 2.6deg; }
+  42% { rotate: -1.8deg; }
+  66% { rotate: 0.9deg; }
+  84% { rotate: -0.4deg; }
+  100% { rotate: 0deg; }
+}
+
+/* The nail and the string up to it from the two rings. */
+.string {
+  display: block;
+  width: 150px;
+  height: 40px;
+  margin-bottom: -6px;
+  overflow: visible;
+  color: var(--muted);
+}
+
+.nail {
+  fill: var(--muted);
+}
+
+.nailShine {
+  fill: var(--background);
+  opacity: 0.7;
+}
+
+.calendar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--foreground);
+  text-align: center;
+  outline: none;
+}
+
+.calendar:focus-visible .binding {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Accent band across the top, printed with today's date, with the two binding rings. */
+.binding {
+  position: relative;
+  display: block;
+  height: 28px;
+  border-radius: 8px 8px 0 0;
+  background: var(--accent);
+  color: var(--porcelain);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 30px;
+  text-transform: uppercase;
+}
+
+.ring {
+  position: absolute;
+  top: -8px;
+  width: 6px;
+  height: 18px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #8b8b8b, #f0f0ee 45%, #9a9a9a);
+  box-shadow: 0 1px 1px rgba(2, 1, 0, 0.25);
+}
+
+.pad {
+  position: relative;
+  z-index: 1;
+  display: block;
+  perspective: 520px;
+}
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 136px;
+  padding: 9px 10px 0;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  background: var(--sheet);
+  /* The pages underneath peek out below the top one, then a soft shadow on the wall. */
+  box-shadow:
+    0 4px 0 -2px var(--sheet),
+    0 4px 0 -1px var(--border),
+    0 8px 0 -4px var(--sheet),
+    0 8px 0 -3px var(--border),
+    0 18px 26px -10px rgba(2, 1, 0, 0.22);
+}
+
+.calendar:hover .sheet:not(.leaving) {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.sheetTitle {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.number {
+  margin-top: 2px;
+  font-size: 54px;
+  font-weight: 700;
+  line-height: 56px;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.today {
+  font-size: 30px;
+  letter-spacing: -0.02em;
+  color: var(--accent);
+}
+
+.plus {
+  font-weight: 300;
+  color: var(--accent);
+}
+
+.caption {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.date {
+  width: 100%;
+  margin-top: auto;
+  padding: 6px 0 8px;
+  border-top: 1px dashed var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* The page being torn off: it swings up from the binding towards you and is gone. */
+.leaving {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  transform-origin: 50% 0;
+  backface-visibility: hidden;
+  box-shadow: 0 10px 24px -8px rgba(2, 1, 0, 0.3);
+  animation: tear 0.7s cubic-bezier(0.5, 0, 0.75, 0.3) forwards;
+}
+
+@keyframes tear {
+  0% {
+    transform: rotateX(0deg);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotateX(96deg);
+    opacity: 0;
+  }
+}
+
+.more {
+  margin-top: 14px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wall:hover {
+    animation: none;
+  }
+  .leaving {
+    animation: fade 0.25s ease forwards;
+  }
+}
+
+@keyframes fade {
+  to {
+    opacity: 0;
+  }
+}
+
+/* ---- Deadlines dialog ---- */
+
+.popup {
+  width: 480px;
+}
+
+.lists {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.lists::-webkit-scrollbar {
+  display: none;
+}
+
+.list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px 6px 6px;
+  border-radius: 6px;
+  transition: background 0.12s ease;
+}
+
+.row:hover {
+  background: var(--surface);
+}
+
+.row[data-past] {
+  opacity: 0.6;
+}
+
+/* A tiny calendar leaf with the due date. */
+.tile {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  width: 38px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+  text-align: center;
+}
+
+.tileMonth {
+  background: var(--muted);
+  color: var(--porcelain);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 14px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.row[data-next] .tileMonth {
+  background: var(--accent);
+}
+
+.tileDay {
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rowText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.rowTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.rowMeta {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.onWall {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pastHeading {
+  margin: 10px 6px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Add / edit: name, date and a button on one line. */
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 4px 0;
+  border-top: 1px solid var(--border);
+}
+
+.input {
+  flex: 1 1 160px;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--accent);
+}
+
+.dateInput {
+  flex: 0 0 auto;
+}
+
+.submit,
+.cancel {
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.submit {
+  border: none;
+  background: var(--accent);
+  color: var(--porcelain);
+  transition: opacity 0.12s ease;
+}
+
+.submit:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.cancel {
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  font-weight: 500;
+}
+
+.cancel:hover {
+  border-color: var(--muted);
+}

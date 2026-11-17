@@ -46,7 +46,8 @@ never in the repo:
 
 `app/lib/paths.ts` resolves those paths; `app/lib/db.ts` opens the better-sqlite3 singleton and
 runs `CREATE TABLE IF NOT EXISTS` migrations on import (tables: `documents`, `highlights`, `chats`,
-`messages`, `settings`, `flashcards`, `flashcard_reviews`, `outlines`, `focus_sessions`, `subjects`).
+`messages`, `settings`, `flashcards`, `flashcard_reviews`, `outlines`, `focus_sessions`, `subjects`,
+`deadlines`).
 The singleton is cached on `globalThis` in dev, so **restart `next dev` after adding a migration**.
 
 **Server boundary.** Everything in `app/lib/*` starts with `import "server-only"` and may only be
@@ -118,6 +119,12 @@ menu. Study now links to `/subjects/[id]?study=1`, which starts a session on arr
 subject's flashcards, notes & highlights across its files, and its files. The flashcard deck
 (tiles, filters, list, study session) is the shared `components/flashcards/CardDeck.tsx`, used by
 both `/flashcards` and subject pages (`subjectId` scopes it).
+
+**Deadlines (wall calendar).** `components/library/WallCalendar.tsx` hangs a tear-off calendar on
+the home screen counting down to the nearest upcoming `deadlines` row (`due` is the local day,
+YYYY-MM-DD, so days are counted on the client against local midnight). When the count changes, the
+old page flips away; the first view of a new day flips yesterday's page (the last count shown is in
+localStorage). Clicking it opens a dialog to add / edit / remove deadlines (`/api/deadlines`).
 
 **Focus timer (Pomodoro).** `TimerProvider` (`app/components/timer/`) is mounted in the root layout,
 so it keeps running across the library and every document; `TimerButton`s in the reader toolbar
