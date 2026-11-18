@@ -187,16 +187,26 @@ export const PdfViewer = memo(function PdfViewer({
     return () => window.removeEventListener("scroll", record);
   }, [numPages, baseSize]);
 
-  const prevScale = useRef(scale);
-  useLayoutEffect(() => {
-    if (prevScale.current === scale) return;
-    prevScale.current = scale;
+  /** Scroll back to the recorded spot, after pages above it changed height. */
+  function holdPlace() {
     const a = anchor.current;
     const el = a && pageRefs.current[a.page - 1];
     if (!a || !el) return;
     const r = el.getBoundingClientRect();
     window.scrollTo({ top: window.scrollY + r.top + a.frac * r.height - headerHeight(el) });
+  }
+
+  const prevScale = useRef(scale);
+  useLayoutEffect(() => {
+    if (prevScale.current === scale) return;
+    prevScale.current = scale;
+    holdPlace();
   }, [scale]);
+
+  // Unrendered pages are sized like page 1 until they first render, so a page above the reader
+  // (say, everything after a short cover) can grow when it loads and push the spot they're on —
+  // or a jump's target — down the screen. Hold the place the same way as for zoom.
+  useLayoutEffect(holdPlace, [sizes]);
 
   function handleLoad(pdf: PdfDocument) {
     setNumPages(pdf.numPages);
