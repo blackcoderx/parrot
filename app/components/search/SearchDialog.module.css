@@ -144,7 +144,8 @@
   min-height: 0;
   overflow-y: auto;
   padding: 0 6px;
-  scrollbar-width: thin;
+  /* Scrollable, but hide the scrollbar like the app's other panels. */
+  scrollbar-width: none;
 }
 
 .result {
@@ -251,4 +252,8 @@
   font: inherit;
   font-size: 11px;
   color: var(--muted);
+}
+
+.results::-webkit-scrollbar {
+  display: none;
 }

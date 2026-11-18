@@ -78,7 +78,8 @@
   line-height: 1.5;
   white-space: pre-wrap;
   color: var(--foreground);
-  scrollbar-width: thin;
+  /* Scrollable, but hide the scrollbar like the app's other panels. */
+  scrollbar-width: none;
 }
 
 .note {
@@ -237,4 +238,8 @@
     animation: none;
     border-color: var(--accent);
   }
+}
+
+.quote::-webkit-scrollbar {
+  display: none;
 }

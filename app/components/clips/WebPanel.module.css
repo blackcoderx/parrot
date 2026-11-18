@@ -64,7 +64,8 @@
   line-height: 1.45;
   white-space: pre-wrap;
   color: var(--foreground);
-  scrollbar-width: thin;
+  /* Scrollable, but hide the scrollbar like the app's other panels. */
+  scrollbar-width: none;
 }
 
 .subject {
@@ -242,4 +243,8 @@
 
 .warning {
   color: #b45309;
+}
+
+.quote::-webkit-scrollbar {
+  display: none;
 }

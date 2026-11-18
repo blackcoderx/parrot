@@ -745,8 +745,10 @@
 
 .menuPopup {
   min-width: 180px;
-  max-height: 320px;
+  /* Room for a typical term's subjects without scrolling; past that it scrolls, scrollbar hidden. */
+  max-height: min(440px, calc(100vh - 32px));
   overflow-y: auto;
+  scrollbar-width: none;
   padding: 4px;
   background: var(--background);
   border: 1px solid var(--border);
@@ -880,4 +882,8 @@
 .timerClock {
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+}
+
+.menuPopup::-webkit-scrollbar {
+  display: none;
 }
