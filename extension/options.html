@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Parrot settings</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        min-width: 360px;
+        margin: 16px;
+        font: 13px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 600;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+      }
+      input {
+        flex: 1;
+        padding: 6px 8px;
+        border: 1px solid #c8c8c6;
+        border-radius: 6px;
+        font: inherit;
+      }
+      button {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 6px;
+        background: #4c21e8;
+        color: #fdfffc;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      p {
+        margin: 8px 0 0;
+        color: #6b6b6b;
+      }
+      #status[data-ok="true"] {
+        color: #15803d;
+      }
+      #status[data-ok="false"] {
+        color: #dc2626;
+      }
+    </style>
+  </head>
+  <body>
+    <label for="url">Parrot address</label>
+    <div class="row">
+      <input id="url" type="url" placeholder="http://localhost:3000" />
+      <button id="save" type="button">Save</button>
+    </div>
+    <p>
+      Use <code>http://localhost:3000</code> when running <code>bun run dev</code>, or
+      <code>http://localhost:3737</code> for the Windows package.
+    </p>
+    <p id="status" role="status"></p>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

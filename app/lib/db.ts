@@ -6,6 +6,8 @@ import { DB_PATH, ensureDirs } from "./paths";
 import { intervals, statusOf, type Srs } from "./srs";
 import type {
   CardSource,
+  Clip,
+  ClipMessage,
   Deadline,
   DocumentRow,
   Flashcard,
@@ -154,6 +156,29 @@ function createDb(): Database.Database {
       due        TEXT NOT NULL,
       created_at INTEGER NOT NULL
     );
+
+    -- Passages clipped from web pages by the browser extension (extension/), each with an
+    -- optional note and Ask Parrot thread. Separate from highlights/chats, which belong to a PDF.
+    CREATE TABLE IF NOT EXISTS clips (
+      id         TEXT PRIMARY KEY,
+      url        TEXT NOT NULL,
+      page_title TEXT NOT NULL,
+      quote      TEXT NOT NULL DEFAULT '',
+      note       TEXT,
+      subject_id TEXT REFERENCES subjects(id) ON DELETE SET NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_clips_subject ON clips(subject_id);
+
+    CREATE TABLE IF NOT EXISTS clip_messages (
+      id         TEXT PRIMARY KEY,
+      clip_id    TEXT NOT NULL REFERENCES clips(id) ON DELETE CASCADE,
+      role       TEXT NOT NULL,
+      content    TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_clip_messages_clip ON clip_messages(clip_id);
   `);
 
   // Migrate databases created before a column existed (CREATE TABLE IF NOT EXISTS above is a
@@ -722,4 +747,90 @@ export function updateDeadline(id: string, title: string, due: string): Deadline
 
 export function deleteDeadline(id: string): void {
   db.prepare("DELETE FROM deadlines WHERE id = ?").run(id);
+}
+
+// ---------------------------------------------------------------------------
+// Web clip queries
+// ---------------------------------------------------------------------------
+
+const CLIP_SELECT = `SELECT c.*, (SELECT COUNT(*) FROM clip_messages m WHERE m.clip_id = c.id)
+                       AS message_count
+                       FROM clips c`;
+
+/** Clips newest first: every one, one subject's, or the Unsorted ones (`subjectId` null). */
+export function listClips(filter: { subjectId?: string | null } = {}): Clip[] {
+  if (filter.subjectId === undefined) {
+    return db.prepare(`${CLIP_SELECT} ORDER BY c.created_at DESC`).all() as Clip[];
+  }
+  return db
+    .prepare(`${CLIP_SELECT} WHERE c.subject_id IS ? ORDER BY c.created_at DESC`)
+    .all(filter.subjectId) as Clip[];
+}
+
+export function getClip(id: string): Clip | undefined {
+  return db.prepare(`${CLIP_SELECT} WHERE c.id = ?`).get(id) as Clip | undefined;
+}
+
+/** Create a clip, and its thread when `messages` is given, in one transaction. */
+export function createClip(input: {
+  url: string;
+  title: string;
+  quote: string;
+  note: string | null;
+  subjectId: string | null;
+  messages?: ClipMessage[];
+}): Clip {
+  const id = randomUUID();
+  const now = Date.now();
+  db.transaction(() => {
+    db.prepare(
+      `INSERT INTO clips (id, url, page_title, quote, note, subject_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(id, input.url, input.title, input.quote, input.note, input.subjectId, now, now);
+    if (input.messages) writeClipMessages(id, input.messages);
+  })();
+  return getClip(id)!;
+}
+
+/** Change a clip's note and/or subject (fields left undefined are kept). */
+export function updateClip(
+  id: string,
+  fields: { note?: string | null; subjectId?: string | null },
+): Clip | undefined {
+  const sets: string[] = ["updated_at = @now"];
+  if (fields.note !== undefined) sets.push("note = @note");
+  if (fields.subjectId !== undefined) sets.push("subject_id = @subjectId");
+  const res = db
+    .prepare(`UPDATE clips SET ${sets.join(", ")} WHERE id = @id`)
+    .run({ id, now: Date.now(), note: fields.note ?? null, subjectId: fields.subjectId ?? null });
+  return res.changes ? getClip(id) : undefined;
+}
+
+export function deleteClip(id: string): void {
+  db.prepare("DELETE FROM clips WHERE id = ?").run(id);
+}
+
+export function listClipMessages(clipId: string): ClipMessage[] {
+  return db
+    .prepare("SELECT role, content FROM clip_messages WHERE clip_id = ? ORDER BY created_at ASC")
+    .all(clipId) as ClipMessage[];
+}
+
+/** Replace a clip's saved thread. False when the clip doesn't exist. */
+export function replaceClipMessages(clipId: string, messages: ClipMessage[]): boolean {
+  return db.transaction(() => {
+    const res = db.prepare("UPDATE clips SET updated_at = ? WHERE id = ?").run(Date.now(), clipId);
+    if (!res.changes) return false;
+    writeClipMessages(clipId, messages);
+    return true;
+  })();
+}
+
+function writeClipMessages(clipId: string, messages: ClipMessage[]): void {
+  db.prepare("DELETE FROM clip_messages WHERE clip_id = ?").run(clipId);
+  const insert = db.prepare(
+    "INSERT INTO clip_messages (id, clip_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)",
+  );
+  const now = Date.now();
+  messages.forEach((m, i) => insert.run(randomUUID(), clipId, m.role, m.content, now + i));
 }

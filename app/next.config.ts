@@ -9,6 +9,16 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["better-sqlite3"],
   // Free up the bottom-left corner for the Settings button (dev-only badge otherwise collides).
   devIndicators: false,
+  // /ext is the browser extension's side panel (extension/). Only extension pages may frame it,
+  // so a website can't embed it and hand it a fake selection to save.
+  async headers() {
+    return [
+      {
+        source: "/ext",
+        headers: [{ key: "Content-Security-Policy", value: "frame-ancestors chrome-extension:" }],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

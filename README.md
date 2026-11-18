@@ -60,6 +60,16 @@ and go.
 - Study one document's deck in the reader, one subject from its page, or everything from
   **Flashcards** on the home screen.
 
+### Web clips (browser extension)
+
+- Select text on any website, right-click **Save to Parrot**, add a note, and file it under a
+  subject or leave it Unsorted.
+- Right-click **Ask Parrot** to chat about the passage in a side panel, and save the thread with
+  the clip.
+- Clips show under **Web clips** on the home screen (filter by subject or Unsorted) and in each
+  subject's **Web clips** tab. Edit the note, move the clip, or continue its thread there, and
+  click its title to jump back to the exact passage on the page.
+
 ### Focus timer
 
 - A Pomodoro timer in a floating window that keeps running while you move between files and
@@ -106,7 +116,7 @@ Parrot keeps everything in an app-data folder in your home directory, never in t
 ```
 ~/.parrot/
   parrot.db      SQLite: documents, subjects, highlights & notes, chats, flashcards and
-                 reviews, focus sessions, deadlines, settings
+                 reviews, focus sessions, deadlines, web clips, settings
   pdfs/          your uploaded PDFs, one file per document
   config.json    optional API keys (see below)
 ```
@@ -164,6 +174,14 @@ default**; enable it and pick a backend in **Settings → Web search**. Bring yo
 
 The tool is only offered to the model when web search is enabled **and** a key is present, so it
 works with any provider that supports tool calls — including local runtimes.
+
+## Browser extension
+
+The `extension/` folder is a Chrome / Edge extension for saving web clips. With Parrot running,
+open `chrome://extensions` (or `edge://extensions`), turn on **Developer mode**, click **Load
+unpacked**, and pick the `extension` folder. If Parrot isn't on `http://localhost:3000` (the
+Windows package uses `3737`), set the address in the extension's options. See
+[extension/README.md](extension/README.md).
 
 ## Share it as a Windows app
 

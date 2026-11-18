@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, type UIMessage } from "ai";
 import { getJson, sendJson } from "@/components/api";
 import { TrashIcon } from "@/components/TrashIcon";
+import { BookmarkIcon, ChatComposer, ChatMessages } from "@/components/chat/ChatThread";
+import { textOf, useParrotChat, type SavedMessage } from "@/components/chat/useParrotChat";
 import type { NormRect } from "./types";
-import Markdown from "./Markdown";
 import { useFloatingWindow } from "@/components/useFloatingWindow";
 import buttons from "./buttons.module.css";
 import styles from "./AskParrot.module.css";
@@ -27,46 +26,7 @@ interface Props {
   onSaved: () => void;
 }
 
-/** Extract plain text from a UIMessage's parts. */
-function textOf(m: UIMessage): string {
-  return m.parts
-    .filter((p) => p.type === "text")
-    .map((p) => (p as { text: string }).text)
-    .join("");
-}
-
-// Claude-Code-style cycling words shown in the "thinking" pill.
-const THINKING_WORDS = [
-  "Reading",
-  "Parsing",
-  "Digesting",
-  "Pondering",
-  "Cross-referencing",
-  "Untangling jargon",
-  "Consulting the paper",
-  "Connecting ideas",
-  "Synthesizing",
-];
-const SEARCHING_WORDS = [
-  "Searching the web",
-  "Chasing citations",
-  "Scanning sources",
-  "Gathering results",
-];
-
-/** Cycle through `words` on an interval while `active`. */
-function useCyclingWord(active: boolean, words: string[]): string {
-  const [i, setI] = useState(0);
-  useEffect(() => {
-    if (!active) return;
-    const id = setInterval(() => setI((n) => n + 1), 1600);
-    return () => clearInterval(id);
-  }, [active, words]);
-  return words[i % words.length] ?? words[0];
-}
-
 export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSaved }: Props) {
-  const [input, setInput] = useState("");
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   // The highlight this thread is anchored to once saved. Set from the first
@@ -77,21 +37,16 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
   // Once anchored, re-saves upsert in place and the thread can be deleted.
   const anchoredId = anchor.kind === "existing" ? anchor.highlightId : savedHighlightId;
   const { panelRef, style, headerProps } = useFloatingWindow(anchorRect, onClose);
-  const imageSent = useRef(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
   // Holds the latest save action for the window-level Ctrl/Cmd+Enter shortcut,
   // so the keydown listener can stay stable without a stale closure.
   const saveRef = useRef<() => void>(() => {});
 
-  // Created once: useChat keeps its first transport, so rebuilding it each render was waste.
-  const [transport] = useState(
-    () =>
-      new DefaultChatTransport({
-        api: "/api/chat",
-        body: { context: { title, text: anchor.kind === "selection" ? anchor.text : undefined } },
-      }),
+  const regionImage = anchor.kind === "region" ? anchor.image : null;
+  const chat = useParrotChat(
+    { title, text: anchor.kind === "selection" ? anchor.text : undefined },
+    regionImage,
   );
-  const { messages, sendMessage, setMessages, status, error } = useChat({ transport });
+  const { messages, busy, seed } = chat;
 
   // Ctrl/Cmd+Enter saves (Escape/resize/drag are handled by useFloatingWindow).
   useEffect(() => {
@@ -108,66 +63,12 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
   // Reopen: seed the saved thread.
   useEffect(() => {
     if (anchor.kind !== "existing") return;
-    getJson<{ messages: { role: string; content: string; image?: string | null }[] }>(
-      `/api/chats?highlightId=${anchor.highlightId}`,
-    )
-      .then((d) => {
-        imageSent.current = true; // history already carries any image
-        setMessages(
-          d.messages.map((m, i) => ({
-            id: `saved-${i}`,
-            role: m.role as UIMessage["role"],
-            parts: [
-              ...(m.image ? [{ type: "file" as const, mediaType: "image/png", url: m.image }] : []),
-              { type: "text" as const, text: m.content },
-            ],
-          })),
-        );
-      })
+    getJson<{ messages: SavedMessage[] }>(`/api/chats?highlightId=${anchor.highlightId}`)
+      .then((d) => seed(d.messages))
       .catch(() => {});
-  }, [anchor, setMessages]);
-
-  // Keep the thread scrolled to the latest message.
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [messages]);
-
-  const busy = status === "submitted" || status === "streaming";
-
-  // Thinking/streaming state for the animated pill and caret.
-  const lastMsg = messages[messages.length - 1];
-  const lastText = lastMsg ? textOf(lastMsg) : "";
-  // A web_search tool call is mid-flight when the last message carries a tool
-  // part that hasn't produced output yet.
-  const searching =
-    !!lastMsg &&
-    lastMsg.parts.some((p) => {
-      const state = (p as { state?: string }).state;
-      return (
-        typeof p.type === "string" &&
-        p.type.startsWith("tool-") &&
-        state !== "output-available" &&
-        state !== "output-error"
-      );
-    });
-  // Show the pill while we wait for the assistant's first visible text.
-  const awaitingAssistant =
-    busy && (!lastMsg || lastMsg.role === "user" || lastText.trim() === "");
-  const streamingId = status === "streaming" ? lastMsg?.id : undefined;
-  const word = useCyclingWord(awaitingAssistant, searching ? SEARCHING_WORDS : THINKING_WORDS);
-
-  function submit() {
-    const text = input.trim();
-    if (!text || busy) return;
-    const attachImage = anchor.kind === "region" && !imageSent.current;
-    sendMessage({
-      text,
-      files: attachImage ? [{ type: "file", mediaType: "image/png", url: anchor.image }] : undefined,
-    });
-    if (attachImage) imageSent.current = true;
-    setInput("");
-    setSaved(false);
-  }
+    // seed is recreated each render; reload only when the anchor changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anchor]);
 
   async function save() {
     const simplified = messages.map((m, i) => ({
@@ -214,7 +115,6 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
     onClose();
   }
 
-  const regionImage = anchor.kind === "region" ? anchor.image : null;
   const canSave = messages.length > 0 && !busy;
   // Keep the shortcut's save action current (guarded like the Save button) so
   // the stable window keydown listener always calls the latest save().
@@ -265,40 +165,12 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
         <img src={regionImage} alt="Selected region" className={styles.askRegion} />
       )}
 
-      <div className={styles.askMessages} ref={scrollRef}>
-        {messages.length === 0 && (
-          <p className={styles.askEmpty}>
-            {anchor.kind === "region"
-              ? "Ask about the selected region."
-              : "Ask about the selected text."}
-          </p>
-        )}
-        {messages.map((m) => {
-          if (m.role === "user") {
-            return (
-              <div key={m.id} className={styles.askUser}>
-                {textOf(m)}
-              </div>
-            );
-          }
-          const text = textOf(m);
-          // Empty assistant message (not started / tool call in flight) → the
-          // thinking pill stands in for it, so skip the empty bubble.
-          if (text.trim() === "") return null;
-          return (
-            <div key={m.id} className={styles.askAssistant}>
-              <Markdown>{text}</Markdown>
-              {m.id === streamingId && <span className={styles.caret} />}
-            </div>
-          );
-        })}
-        {awaitingAssistant && (
-          <div className={styles.askThinking}>
-            <span className={styles.shimmer}>{word}…</span>
-          </div>
-        )}
-        {error && <div className={styles.askError}>{error.message}</div>}
-      </div>
+      <ChatMessages
+        chat={chat}
+        emptyText={
+          anchor.kind === "region" ? "Ask about the selected region." : "Ask about the selected text."
+        }
+      />
 
       {confirmDelete ? (
         <div className={styles.askInputRow}>
@@ -311,76 +183,8 @@ export function AskParrot({ documentId, title, anchorRect, anchor, onClose, onSa
           </button>
         </div>
       ) : (
-        <div className={styles.askInputRow}>
-          <div className={styles.composer}>
-            <input
-              className={styles.askInput}
-              value={input}
-              placeholder="Type a message…"
-              aria-label="Message"
-              // data-autofocus: focused when the window opens; autoFocus: when it remounts after a cancelled delete.
-              data-autofocus
-              autoFocus
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                // Plain Enter sends; Ctrl/Cmd+Enter bubbles to the window save handler.
-                if (e.key === "Enter" && !e.metaKey && !e.ctrlKey) submit();
-              }}
-            />
-            <button
-              className={styles.composerSend}
-              onClick={submit}
-              disabled={busy || !input.trim()}
-              data-busy={busy || undefined}
-              aria-label="Send"
-              title="Send (Enter)"
-            >
-              <ArrowUpIcon />
-            </button>
-          </div>
-        </div>
+        <ChatComposer chat={chat} onSent={() => setSaved(false)} />
       )}
     </div>
-  );
-}
-
-// Tabler outline "arrow-up" and "bookmark" (MIT).
-
-function ArrowUpIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M12 5l0 14" />
-      <path d="M18 11l-6 -6" />
-      <path d="M6 11l6 -6" />
-    </svg>
-  );
-}
-
-/** Outline until the thread is saved, then filled. */
-function BookmarkIcon({ filled }: { filled: boolean }) {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill={filled ? "currentColor" : "none"}
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M18 7v14l-6 -4l-6 4v-14a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4z" />
-    </svg>
   );
 }

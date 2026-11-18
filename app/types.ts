@@ -151,3 +151,25 @@ export interface Deadline {
   due: string;
   created_at: number;
 }
+
+/** A passage clipped from a web page by the browser extension, with an optional note. */
+export interface Clip {
+  id: string;
+  url: string;
+  page_title: string;
+  /** The selected text; may be empty for a note on the whole page. */
+  quote: string;
+  note: string | null;
+  /** Null = Unsorted. */
+  subject_id: string | null;
+  created_at: number;
+  updated_at: number;
+  /** Messages in its saved Ask Parrot thread (0 = none). */
+  message_count: number;
+}
+
+/** One message of a clip's saved Ask Parrot thread. */
+export interface ClipMessage {
+  role: string;
+  content: string;
+}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Tabs } from "@base-ui-components/react/tabs";
 import { sendJson } from "@/components/api";
+import { ClipList } from "@/components/clips/ClipList";
 import { CardDeck } from "@/components/flashcards/CardDeck";
 import { LibraryRow, type LibraryDoc } from "@/components/library/Library";
 import { uploadPdf } from "@/components/library/upload";
@@ -12,7 +13,7 @@ import { KindMarker } from "@/components/reader/AnnotationList";
 import Markdown from "@/components/reader/Markdown";
 import { TimerButton } from "@/components/timer/TimerButton";
 import { useNow } from "@/components/timer/TimerProvider";
-import type { StudyCard, Subject, SubjectAnnotation, SubjectSummary } from "@/types";
+import type { Clip, StudyCard, Subject, SubjectAnnotation, SubjectSummary } from "@/types";
 import { formatStudied, isStale } from "./studied";
 import studyStyles from "@/components/flashcards/Study.module.css";
 import libraryStyles from "@/components/library/Library.module.css";
@@ -24,23 +25,30 @@ interface Props {
   subjects: Subject[];
   initialDocs: LibraryDoc[];
   annotations: SubjectAnnotation[];
+  /** Web clips filed under this subject (browser extension). */
+  initialClips: Clip[];
   initialCards: StudyCard[];
   /** Start a study session straight away (the home screen's Study now, `?study=1`). */
   autoStudy: boolean;
 }
 
-/** A subject's page: study its flashcards, review its notes and highlights, manage its files. */
+/**
+ * A subject's page: study its flashcards, review its notes and highlights and its web clips,
+ * manage its files.
+ */
 export function SubjectPage({
   subject,
   subjects,
   initialDocs,
   annotations,
+  initialClips,
   initialCards,
   autoStudy,
 }: Props) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [docs, setDocs] = useState(initialDocs);
+  const [clips, setClips] = useState(initialClips);
   const [uploading, setUploading] = useState(false);
   const [studying, setStudying] = useState(false);
   const now = useNow(true, 60_000);
@@ -120,6 +128,10 @@ export function SubjectPage({
               Notes &amp; highlights
               <span className={styles.tabCount}>{annotations.length}</span>
             </Tabs.Tab>
+            <Tabs.Tab value="clips" className={styles.tab}>
+              Web clips
+              <span className={styles.tabCount}>{clips.length}</span>
+            </Tabs.Tab>
             <Tabs.Tab value="files" className={styles.tab}>
               Files
               <span className={styles.tabCount}>{docs.length}</span>
@@ -139,6 +151,16 @@ export function SubjectPage({
 
         <Tabs.Panel value="notes" className={styles.panel}>
           <AnnotationsByFile annotations={annotations} />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="clips" className={styles.panel}>
+          <ClipList
+            clips={clips}
+            setClips={setClips}
+            subjects={subjects}
+            scope={subject.id}
+            emptyText="No web clips yet. Save passages from websites with the Parrot browser extension."
+          />
         </Tabs.Panel>
 
         <Tabs.Panel value="files" className={styles.panel}>

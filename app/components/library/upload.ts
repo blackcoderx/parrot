@@ -23,7 +23,7 @@ export function lastSubject(): string | null {
   }
 }
 
-function rememberSubject(subjectId: string | null) {
+export function rememberSubject(subjectId: string | null) {
   try {
     localStorage.setItem(LAST_SUBJECT_KEY, subjectId ?? "");
   } catch {

@@ -157,6 +157,9 @@ export function Library({
                 </span>
               )}
             </Link>
+            <Link href="/clips" className={styles.topBtn}>
+              Web clips
+            </Link>
           </div>
         </header>
 

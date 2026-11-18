@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Parrot</title>
+    <link rel="stylesheet" href="sidepanel.css" />
+  </head>
+  <body>
+    <iframe id="parrot" title="Parrot" hidden></iframe>
+
+    <div id="notice" class="notice" hidden>
+      <img src="icons/icon-48.png" alt="" />
+      <p id="notice-text"></p>
+      <div class="notice-actions">
+        <button id="retry" type="button">Try again</button>
+        <button id="settings" type="button" class="secondary">Settings</button>
+      </div>
+    </div>
+
+    <script type="module" src="sidepanel.js"></script>
+  </body>
+</html>

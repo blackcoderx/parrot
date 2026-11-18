@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import {
+  listClips,
   listStudyCards,
   listSubjectAnnotations,
   listSubjectDocuments,
@@ -11,7 +12,7 @@ import { SubjectPage } from "@/components/subjects/SubjectPage";
 export const dynamic = "force-dynamic";
 
 /**
- * One subject: its flashcards to study, every note and highlight, and its files.
+ * One subject: its flashcards to study, every note and highlight, its web clips, and its files.
  * `?study=1` (the home screen's Study now) starts a study session on arrival.
  */
 export default async function Page({ params, searchParams }: PageProps<"/subjects/[id]">) {
@@ -35,6 +36,7 @@ export default async function Page({ params, searchParams }: PageProps<"/subject
       subjects={all.map(({ id, name, created_at }) => ({ id, name, created_at }))}
       initialDocs={docs}
       annotations={listSubjectAnnotations(id)}
+      initialClips={listClips({ subjectId: id })}
       initialCards={listStudyCards().filter((c) => c.subject_id === id)}
       autoStudy={study === "1"}
     />

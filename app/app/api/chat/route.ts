@@ -9,21 +9,25 @@ export const runtime = "nodejs";
 interface ChatContext {
   title?: string;
   text?: string;
+  /** Set when the text comes from a web page (the browser extension) rather than a PDF. */
+  url?: string;
 }
 
 function buildSystem(context: ChatContext | undefined, canSearch: boolean): string {
+  const source = context?.url ? "web page" : "paper";
   const lines = [
-    "You are Parrot, a reading companion who helps someone understand the paper they're reading. " +
+    `You are Parrot, a reading companion who helps someone understand the ${source} they're reading. ` +
       "They'll give you the title and the passage or figure they've selected — center your answer on that.",
     "Explain clearly and concisely, plain language first, leading with the direct answer. Define " +
       "technical terms, and briefly explain any method or concept the text leans on but doesn't spell " +
       "out (for example a cited technique), so the reader doesn't have to look elsewhere.",
-    "Ground your answer in the provided text: separate what the paper actually says from your own " +
+    `Ground your answer in the provided text: separate what the ${source} actually says from your own ` +
       "background knowledge, and if the passage doesn't settle a question, say so rather than guess. " +
       "Don't invent numbers, results, or citations.",
     "Use Markdown, and write math as LaTeX with $…$ or $$…$$.",
   ];
   if (context?.title) lines.push(`The reader is reading: "${context.title}".`);
+  if (typeof context?.url === "string") lines.push(`The page's address is ${context.url}.`);
   if (context?.text) {
     lines.push(`They are asking about this excerpt:\n"""\n${context.text}\n"""`);
   }

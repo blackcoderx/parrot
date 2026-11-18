@@ -47,7 +47,7 @@ never in the repo:
 `app/lib/paths.ts` resolves those paths; `app/lib/db.ts` opens the better-sqlite3 singleton and
 runs `CREATE TABLE IF NOT EXISTS` migrations on import (tables: `documents`, `highlights`, `chats`,
 `messages`, `settings`, `flashcards`, `flashcard_reviews`, `outlines`, `focus_sessions`, `subjects`,
-`deadlines`).
+`deadlines`, `clips`, `clip_messages`).
 The singleton is cached on `globalThis` in dev, so **restart `next dev` after adding a migration**.
 
 **Server boundary.** Everything in `app/lib/*` starts with `import "server-only"` and may only be
@@ -125,6 +125,18 @@ the home screen counting down to the nearest upcoming `deadlines` row (`due` is 
 YYYY-MM-DD, so days are counted on the client against local midnight). When the count changes, the
 old page flips away; the first view of a new day flips yesterday's page (the last count shown is in
 localStorage). Clicking it opens a dialog to add / edit / remove deadlines (`/api/deadlines`).
+
+**Web clips + browser extension.** `extension/` (repo root, plain JS, Chrome/Edge MV3, no build)
+adds right-click Save to Parrot / Ask Parrot. Its side panel frames Parrot's own `/ext` page
+(`components/clips/WebPanel.tsx`) and `postMessage`s it the page URL, title and selection; that
+page saves through `/api/clips` and chats through `/api/chat` same-origin, so the extension needs
+no API access or tokens of its own. `/ext` only accepts messages from a `chrome-extension://`
+origin, and `next.config.ts` sends `frame-ancestors chrome-extension:` for it — keep both.
+Clips live in `clips` (+ `clip_messages` for the saved thread; separate from `chats`, whose
+`document_id` is required) and show on `/clips` and in each subject's Web clips tab
+(`components/clips/ClipList.tsx`). Source links use a `#:~:text=` fragment (`links.ts`). The chat
+UI (`useParrotChat`, `ChatMessages`, `ChatComposer` in `components/chat/`) is shared by
+`AskParrot`, the panel and the clip thread dialog; a context `url` makes the prompt say "web page".
 
 **Focus timer (Pomodoro).** `TimerProvider` (`app/components/timer/`) is mounted in the root layout,
 so it keeps running across the library and every document; `TimerButton`s in the reader toolbar
