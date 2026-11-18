@@ -1,6 +1,6 @@
 # Parrot
 
-![app.png](app/public/app.png)
+![app.png](app/public/parrot.png)
 
 A local-first study reader for PDFs: textbooks, lecture notes and research papers. Sort your files
 into subjects, read and highlight them, take notes, ask an AI about any passage or figure, and
