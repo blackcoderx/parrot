@@ -181,6 +181,10 @@ function SubjectTile({
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  // Choosing Rename swaps the tile for the name box, removing the still-open ⋯ menu. A menu
+  // returns focus as it goes, which would blur the new box — committing it unchanged and closing
+  // it straight away — so when Rename was chosen the menu leaves focus alone.
+  const renameRequested = useRef(false);
 
   if (editing) {
     return (
@@ -190,6 +194,7 @@ function SubjectTile({
           defaultValue={s.name}
           onDone={(name) => {
             setEditing(false);
+            renameRequested.current = false;
             if (name && name !== s.name) onRename(name);
           }}
         />
@@ -229,8 +234,14 @@ function SubjectTile({
         </Menu.Trigger>
         <Menu.Portal>
           <Menu.Positioner className={styles.menuPositioner} side="bottom" align="end" sideOffset={4}>
-            <Menu.Popup className={styles.menuPopup}>
-              <Menu.Item className={styles.menuItem} onClick={() => setEditing(true)}>
+            <Menu.Popup className={styles.menuPopup} finalFocus={() => !renameRequested.current}>
+              <Menu.Item
+                className={styles.menuItem}
+                onClick={() => {
+                  renameRequested.current = true;
+                  setEditing(true);
+                }}
+              >
                 Rename
               </Menu.Item>
               <Menu.Item
