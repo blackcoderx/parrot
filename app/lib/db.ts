@@ -9,6 +9,8 @@ import type {
   Clip,
   ClipMessage,
   Deadline,
+  SearchKind,
+  SearchResult,
   DocumentRow,
   Flashcard,
   Grade,
@@ -202,11 +204,76 @@ function createDb(): Database.Database {
   addColumn("flashcards", "due", "INTEGER");
   db.exec("CREATE INDEX IF NOT EXISTS idx_flashcards_due ON flashcards(due)");
 
+  createSearchIndex(db);
+
   // Threads orphaned by highlight deletes before deleteHighlight removed them too. Every
   // saved thread has an anchor, so an anchorless chat can never be reopened.
   db.exec("DELETE FROM chats WHERE highlight_id IS NULL");
 
   return db;
+}
+
+/**
+ * Full-text search (FTS5) over everything the reader wrote or marked: PDF notes and highlights
+ * (one row per highlight; kind "note" when it has a note) and web clips. Built once from the
+ * existing rows, then kept current by triggers, so nothing else has to remember to update it.
+ * `title` is only set for clips (their page title); a PDF's own title isn't indexed, or every
+ * highlight in "Vector Analysis" would match "vector".
+ */
+function createSearchIndex(db: Database.Database) {
+  const exists = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'search_index'")
+    .get();
+  if (!exists) {
+    db.transaction(() => {
+      db.exec(`
+        CREATE VIRTUAL TABLE search_index USING fts5(
+          kind UNINDEXED, ref_id UNINDEXED, title, quote, note,
+          tokenize = 'unicode61 remove_diacritics 2', prefix = '2 3'
+        );
+        INSERT INTO search_index (kind, ref_id, title, quote, note)
+          SELECT CASE WHEN COALESCE(note, '') <> '' THEN 'note' ELSE 'highlight' END,
+                 id, '', text, COALESCE(note, '')
+            FROM highlights
+           WHERE text <> '' OR COALESCE(note, '') <> '';
+        INSERT INTO search_index (kind, ref_id, title, quote, note)
+          SELECT 'clip', id, page_title, quote, COALESCE(note, '') FROM clips;
+      `);
+    })();
+  }
+
+  // Region highlights with no note (e.g. an AI-pen thread's anchor) have no text to find.
+  const highlightRow = (r: string) => `
+    INSERT INTO search_index (kind, ref_id, title, quote, note)
+    SELECT CASE WHEN COALESCE(${r}.note, '') <> '' THEN 'note' ELSE 'highlight' END,
+           ${r}.id, '', ${r}.text, COALESCE(${r}.note, '')
+     WHERE ${r}.text <> '' OR COALESCE(${r}.note, '') <> '';`;
+  const clipRow = (r: string) => `
+    INSERT INTO search_index (kind, ref_id, title, quote, note)
+    VALUES ('clip', ${r}.id, ${r}.page_title, ${r}.quote, COALESCE(${r}.note, ''));`;
+
+  db.exec(`
+    CREATE TRIGGER IF NOT EXISTS search_highlight_insert AFTER INSERT ON highlights BEGIN
+      ${highlightRow("NEW")}
+    END;
+    CREATE TRIGGER IF NOT EXISTS search_highlight_update AFTER UPDATE OF text, note ON highlights BEGIN
+      DELETE FROM search_index WHERE ref_id = OLD.id;
+      ${highlightRow("NEW")}
+    END;
+    CREATE TRIGGER IF NOT EXISTS search_highlight_delete AFTER DELETE ON highlights BEGIN
+      DELETE FROM search_index WHERE ref_id = OLD.id;
+    END;
+    CREATE TRIGGER IF NOT EXISTS search_clip_insert AFTER INSERT ON clips BEGIN
+      ${clipRow("NEW")}
+    END;
+    CREATE TRIGGER IF NOT EXISTS search_clip_update AFTER UPDATE OF page_title, quote, note ON clips BEGIN
+      DELETE FROM search_index WHERE ref_id = OLD.id;
+      ${clipRow("NEW")}
+    END;
+    CREATE TRIGGER IF NOT EXISTS search_clip_delete AFTER DELETE ON clips BEGIN
+      DELETE FROM search_index WHERE ref_id = OLD.id;
+    END;
+  `);
 }
 
 export const db: Database.Database = globalForDb.parrotDb ?? createDb();
@@ -833,4 +900,82 @@ function writeClipMessages(clipId: string, messages: ClipMessage[]): void {
   );
   const now = Date.now();
   messages.forEach((m, i) => insert.run(randomUUID(), clipId, m.role, m.content, now + i));
+}
+
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+
+/**
+ * The reader's words as an FTS5 query: each word a quoted prefix ("vect" finds "vector"), all
+ * required. Quoting keeps FTS syntax characters (quotes, -, :, *, parentheses) from being read
+ * as operators. Null when nothing searchable was typed.
+ */
+function ftsQuery(text: string): string | null {
+  const terms = text
+    .split(/\s+/)
+    .map((t) => t.replace(/"/g, ""))
+    .filter((t) => /[\p{L}\p{N}]/u.test(t));
+  return terms.length ? terms.map((t) => `"${t}"*`).join(" ") : null;
+}
+
+/**
+ * Notes, highlights and web clips matching `text`, best first. `subject` narrows to one
+ * subject (null = Unsorted); `kind` to one kind.
+ */
+export function search(
+  text: string,
+  options: { kind?: SearchKind; subject?: string | null; limit?: number } = {},
+): SearchResult[] {
+  const query = ftsQuery(text);
+  if (!query) return [];
+  const where = ["search_index MATCH @query"];
+  if (options.kind) where.push("s.kind = @kind");
+  if (options.subject !== undefined) {
+    where.push("COALESCE(d.subject_id, c.subject_id) IS @subject");
+  }
+  const rows = db
+    .prepare(
+      `SELECT s.kind, s.ref_id AS id,
+              -- Matches are wrapped in char(1) … char(2) (components/search/Snippet.tsx).
+              snippet(search_index, -1, char(1), char(2), '…', 24) AS snippet,
+              COALESCE(d.subject_id, c.subject_id) AS subject_id,
+              h.document_id, d.title AS document_title, h.page,
+              c.url, c.page_title
+         FROM search_index s
+         LEFT JOIN highlights h ON s.kind <> 'clip' AND h.id = s.ref_id
+         LEFT JOIN documents d ON d.id = h.document_id
+         LEFT JOIN clips c ON s.kind = 'clip' AND c.id = s.ref_id
+        WHERE ${where.join(" AND ")}
+        ORDER BY bm25(search_index, 0, 0, 1.0, 1.0, 1.5)
+        LIMIT @limit`,
+    )
+    .all({
+      query,
+      kind: options.kind ?? null,
+      subject: options.subject ?? null,
+      limit: options.limit ?? 50,
+    }) as (SearchResult & Record<string, unknown>)[];
+
+  // Keep each result to its own kind's fields (the LEFT JOINs fill the others with nulls).
+  return rows.map((r): SearchResult =>
+    r.kind === "clip"
+      ? {
+          kind: "clip",
+          id: r.id,
+          snippet: r.snippet,
+          subject_id: r.subject_id,
+          url: r.url as string,
+          page_title: r.page_title as string,
+        }
+      : {
+          kind: r.kind,
+          id: r.id,
+          snippet: r.snippet,
+          subject_id: r.subject_id,
+          document_id: r.document_id as string,
+          document_title: r.document_title as string,
+          page: r.page as number,
+        },
+  );
 }

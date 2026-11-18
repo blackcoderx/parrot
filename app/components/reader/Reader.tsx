@@ -28,6 +28,8 @@ interface Props {
   documentId: string;
   title: string;
   initialPage: number;
+  /** A highlight to go to on arrival (`?note=<id>`, e.g. from search); a note also opens. */
+  focusHighlightId?: string | null;
 }
 
 interface AskState {
@@ -45,7 +47,7 @@ const MAX_SCALE = 3;
 const SCALE_STEP = 0.2;
 const OUTLINE_KEY = "parrot.outlineOpen";
 
-export function Reader({ documentId, title, initialPage }: Props) {
+export function Reader({ documentId, title, initialPage, focusHighlightId = null }: Props) {
   const [scale, setScale] = useState(1.2);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [activeColor, setActiveColor] = useState(HIGHLIGHT_COLORS[0]);
@@ -74,9 +76,26 @@ export function Reader({ documentId, title, initialPage }: Props) {
   const patchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const textCache = useRef<Promise<PageText> | null>(null);
 
+  const focusPending = useRef(focusHighlightId);
+
   const loadHighlights = useCallback(() => {
     getJson<Highlight[]>(`/api/highlights?documentId=${documentId}`)
-      .then(setHighlights)
+      .then((list) => {
+        setHighlights(list);
+        // First load with ?note=<id>: scroll to that highlight (PdfViewer applies the jump once
+        // the PDF has loaded) and open it if it's a note. Then drop the parameter so a reload
+        // doesn't reopen it.
+        const id = focusPending.current;
+        if (!id) return;
+        focusPending.current = null;
+        window.history.replaceState(null, "", `/read/${documentId}`);
+        const h = list.find((x) => x.id === id);
+        if (!h) return;
+        const y = h.rects.length ? Math.min(...h.rects.map((r) => r.y)) : null;
+        setCurrentPage(h.page);
+        setJump((j) => ({ page: h.page, y, nonce: (j?.nonce ?? 0) + 1 }));
+        if (h.note !== null) setNote({ anchor: { kind: "existing", highlight: h } });
+      })
       .catch(() => setHighlights([]));
   }, [documentId]);
 

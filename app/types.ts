@@ -173,3 +173,29 @@ export interface ClipMessage {
   role: string;
   content: string;
 }
+
+/** What a search result is: a PDF note, a plain highlight, or a web clip. */
+export type SearchKind = "note" | "highlight" | "clip";
+
+/**
+ * One search hit. `snippet` is the best-matching passage, with each match wrapped in
+ * \u0001 … \u0002 (rendered by components/search/Snippet.tsx).
+ */
+export type SearchResult =
+  | {
+      kind: "note" | "highlight";
+      id: string;
+      snippet: string;
+      subject_id: string | null;
+      document_id: string;
+      document_title: string;
+      page: number;
+    }
+  | {
+      kind: "clip";
+      id: string;
+      snippet: string;
+      subject_id: string | null;
+      url: string;
+      page_title: string;
+    };

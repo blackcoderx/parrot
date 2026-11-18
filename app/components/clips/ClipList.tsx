@@ -101,7 +101,7 @@ function ClipCard({
   const host = hostOf(clip.url);
 
   return (
-    <li className={styles.card}>
+    <li className={styles.card} id={`clip-${clip.id}`}>
       <div className={styles.head}>
         <div className={styles.headText}>
           <a

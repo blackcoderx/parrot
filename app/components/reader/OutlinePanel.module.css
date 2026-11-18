@@ -254,3 +254,21 @@
 .outlineTitle :global(.katex) {
   font-size: 1em;
 }
+
+/* Filter box at the top of the Notes tab. */
+.annotationFilter {
+  width: calc(100% - 8px);
+  margin: 4px 4px 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.annotationFilter:focus {
+  border-color: var(--accent);
+}

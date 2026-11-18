@@ -47,7 +47,7 @@ never in the repo:
 `app/lib/paths.ts` resolves those paths; `app/lib/db.ts` opens the better-sqlite3 singleton and
 runs `CREATE TABLE IF NOT EXISTS` migrations on import (tables: `documents`, `highlights`, `chats`,
 `messages`, `settings`, `flashcards`, `flashcard_reviews`, `outlines`, `focus_sessions`, `subjects`,
-`deadlines`, `clips`, `clip_messages`).
+`deadlines`, `clips`, `clip_messages`, plus the `search_index` FTS5 table).
 The singleton is cached on `globalThis` in dev, so **restart `next dev` after adding a migration**.
 
 **Server boundary.** Everything in `app/lib/*` starts with `import "server-only"` and may only be
@@ -137,6 +137,17 @@ Clips live in `clips` (+ `clip_messages` for the saved thread; separate from `ch
 (`components/clips/ClipList.tsx`). Source links use a `#:~:text=` fragment (`links.ts`). The chat
 UI (`useParrotChat`, `ChatMessages`, `ChatComposer` in `components/chat/`) is shared by
 `AskParrot`, the panel and the clip thread dialog; a context `url` makes the prompt say "web page".
+
+**Search.** `search_index` is an FTS5 table (unicode61, accents folded, prefix indexes) over
+highlights (kind `note` when it has a note, else `highlight`) and clips. `createSearchIndex` in
+`db.ts` builds it once from existing rows; triggers on `highlights` and `clips` keep it current,
+so nothing else writes to it. A PDF's own title is deliberately not indexed. `search()` turns the
+typed words into quoted prefix terms (so FTS syntax can't break it) and returns `SearchResult`s
+with `snippet()` matches wrapped in char(1)/char(2), which `components/search/Snippet.tsx` turns
+into `<mark>`s. `SearchDialog` (Ctrl/⌘+K, mounted in the root layout, off on `/ext`) calls
+`/api/search`. Results link to `/read/[id]?page=N&note=<highlight id>` (the reader scrolls there
+and opens a note, then drops the parameter) or `/clips?clip=<id>` (scrolls and flashes). The
+Notes tabs filter what they already show with `components/search/filter.ts`.
 
 **Focus timer (Pomodoro).** `TimerProvider` (`app/components/timer/`) is mounted in the root layout,
 so it keeps running across the library and every document; `TimerButton`s in the reader toolbar

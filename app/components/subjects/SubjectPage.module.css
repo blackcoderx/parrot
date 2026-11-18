@@ -185,3 +185,22 @@
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* Filter box above the Notes & highlights tab's list. */
+.filter {
+  align-self: flex-start;
+  width: min(320px, 100%);
+  margin-bottom: -8px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.filter:focus {
+  border-color: var(--accent);
+}

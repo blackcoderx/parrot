@@ -14,6 +14,7 @@ import Markdown from "@/components/reader/Markdown";
 import { TimerButton } from "@/components/timer/TimerButton";
 import { useNow } from "@/components/timer/TimerProvider";
 import type { Clip, StudyCard, Subject, SubjectAnnotation, SubjectSummary } from "@/types";
+import { matchesFilter } from "@/components/search/filter";
 import { formatStudied, isStale } from "./studied";
 import studyStyles from "@/components/flashcards/Study.module.css";
 import libraryStyles from "@/components/library/Library.module.css";
@@ -200,9 +201,12 @@ function plural(n: number, word: string): string {
 
 /**
  * Every note, highlight and saved thread in the subject, grouped by file (most recently read
- * first) in page order. Each opens its file at that page.
+ * first) in page order, with a box to filter them by their text. Each opens its file at that
+ * spot (and a note opens itself).
  */
 function AnnotationsByFile({ annotations }: { annotations: SubjectAnnotation[] }) {
+  const [filter, setFilter] = useState("");
+
   if (annotations.length === 0) {
     return (
       <p className={studyStyles.muted}>
@@ -213,6 +217,7 @@ function AnnotationsByFile({ annotations }: { annotations: SubjectAnnotation[] }
 
   const files: { id: string; title: string; items: SubjectAnnotation[] }[] = [];
   for (const a of annotations) {
+    if (!matchesFilter(`${a.note ?? ""} ${a.text}`, filter)) continue;
     const last = files[files.length - 1];
     if (last?.id === a.document_id) last.items.push(a);
     else files.push({ id: a.document_id, title: a.document_title, items: [a] });
@@ -220,6 +225,15 @@ function AnnotationsByFile({ annotations }: { annotations: SubjectAnnotation[] }
 
   return (
     <div className={styles.files}>
+      <input
+        className={styles.filter}
+        type="search"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+        placeholder="Filter notes and highlights"
+        aria-label="Filter notes and highlights"
+      />
+      {files.length === 0 && <p className={studyStyles.muted}>Nothing matches.</p>}
       {files.map((file) => (
         <section key={file.id} className={styles.file}>
           <Link href={`/read/${file.id}`} className={styles.fileTitle}>
@@ -230,7 +244,7 @@ function AnnotationsByFile({ annotations }: { annotations: SubjectAnnotation[] }
               .sort((a, b) => a.page - b.page || (a.rects[0]?.y ?? 0) - (b.rects[0]?.y ?? 0))
               .map((a) => (
                 <li key={a.id}>
-                  <Link href={`/read/${a.document_id}?page=${a.page}`} className={styles.note}>
+                  <Link href={`/read/${a.document_id}?page=${a.page}&note=${a.id}`} className={styles.note}>
                     <KindMarker highlight={a} />
                     <span className={styles.noteBody}>
                       {a.note ? (

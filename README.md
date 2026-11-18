@@ -40,6 +40,17 @@ and go.
   selected text, to a region with the **note pen**, or to the page itself with **New note**.
 - The note window opens large and centred; drag it by its header and resize it from the corner.
 
+### Search
+
+- **Ctrl/⌘+K** anywhere (or **Search** on the home screen) searches every note, highlight and
+  web clip across all your files as you type. Partial words match ("vect" finds "vector"), and
+  accents don't matter.
+- Narrow to notes, highlights or web clips, or to one subject. Each result shows the matching
+  passage and where it's from.
+- Opening a result takes you to the exact spot: the PDF scrolls to the highlight and a note
+  opens; a web clip is found and highlighted on the Web clips page.
+- The reader's Notes tab and each subject's Notes & highlights tab also have a filter box.
+
 ### Ask Parrot (AI)
 
 - Chat about selected text, or use the **AI pen** to capture a figure, table or equation and ask
@@ -76,15 +87,16 @@ and go.
   survives a reload.
 - Adjustable focus and break lengths, and a day streak.
 
-## Keyboard shortcuts (in the reader)
+## Keyboard shortcuts
 
 | Key | Action |
 | --- | --- |
-| Ctrl/⌘+F | Find in document |
-| Ctrl/⌘+B | Contents sidebar |
-| N | New note on this page |
-| F | This document's flashcards |
-| Shift+F | New flashcard |
+| Ctrl/⌘+K | Search notes, highlights and web clips (anywhere) |
+| Ctrl/⌘+F | Find in the document (reader) |
+| Ctrl/⌘+B | Contents sidebar (reader) |
+| N | New note on this page (reader) |
+| F | This document's flashcards (reader) |
+| Shift+F | New flashcard (reader) |
 | Esc | Close the open window |
 
 ## Stack

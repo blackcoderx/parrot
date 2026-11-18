@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { TimerButton } from "@/components/timer/TimerButton";
 import studyStyles from "@/components/flashcards/Study.module.css";
@@ -11,9 +11,29 @@ import styles from "./ClipList.module.css";
 type Filter = "all" | "unsorted" | string;
 
 /** The Web clips page: everything saved from the browser extension, filtered by subject. */
-export function ClipsPage({ initialClips, subjects }: { initialClips: Clip[]; subjects: Subject[] }) {
+export function ClipsPage({
+  initialClips,
+  subjects,
+  focusClipId,
+}: {
+  initialClips: Clip[];
+  subjects: Subject[];
+  /** Scroll to and flash this clip on arrival (`?clip=<id>`, from search). */
+  focusClipId: string | null;
+}) {
   const [clips, setClips] = useState(initialClips);
   const [filter, setFilter] = useState<Filter>("all");
+
+  useEffect(() => {
+    if (!focusClipId) return;
+    window.history.replaceState(null, "", "/clips"); // a reload shouldn't flash it again
+    const card = document.getElementById(`clip-${focusClipId}`);
+    if (!card) return;
+    card.scrollIntoView({ block: "center" });
+    card.dataset.flash = "";
+    const t = setTimeout(() => delete card.dataset.flash, 1600);
+    return () => clearTimeout(t);
+  }, [focusClipId]);
 
   const count = (id: string | null) => clips.filter((c) => c.subject_id === id).length;
   // Subjects that have clips, plus the one being viewed (so its chip stays after emptying it).

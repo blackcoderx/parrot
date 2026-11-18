@@ -218,3 +218,23 @@
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* A clip arrived at from search flashes briefly. */
+.card[data-flash] {
+  animation: flash 1.6s ease-out;
+}
+
+@keyframes flash {
+  0%,
+  35% {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card[data-flash] {
+    animation: none;
+    border-color: var(--accent);
+  }
+}

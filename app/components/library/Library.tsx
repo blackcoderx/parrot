@@ -19,6 +19,7 @@ import {
   SubjectGrid,
   TitleInput,
 } from "./Subjects";
+import { SearchButton } from "@/components/search/SearchButton";
 import { ThemeButton } from "./ThemeButton";
 import { WallCalendar } from "./WallCalendar";
 import { lastSubject, uploadPdf } from "./upload";
@@ -146,6 +147,7 @@ export function Library({
           </h1>
 
           <div className={styles.topActions}>
+            <SearchButton className={styles.topBtn} />
             <button className={styles.topBtn} onClick={openPicker} disabled={uploading}>
               {uploading ? "Opening…" : "New file"}
             </button>
